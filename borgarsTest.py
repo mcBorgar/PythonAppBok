@@ -1,7 +1,8 @@
 import paramiko
 import json
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QSizePolicy
+from PyQt5.QtCore import Qt
 
 class BookUploader(QWidget):
     def __init__(self):
@@ -31,12 +32,50 @@ class BookUploader(QWidget):
         self.upload_button.clicked.connect(self.upload_book)
         layout.addWidget(self.upload_button)
 
+        # Make the widgets scale with window size
+        self.book_name_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.book_price_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.upload_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
         self.setLayout(layout)
+
+        # Apply light brown theme using QSS (Qt Style Sheets)
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #D2B48C;  /* Light brown background */
+                font-family: Arial, sans-serif;
+            }
+            QLabel {
+                color: #4B2E2E;  /* Darker brown text color */
+                font-size: 16px;
+            }
+            QLineEdit {
+                background-color: #F5DEB3;  /* Wheat color background for input fields */
+                color: #4B2E2E;
+                border: 2px solid #8B4513;  /* SaddleBrown border */
+                border-radius: 5px;
+                padding: 5px;
+                font-size: 14px;
+            }
+            QPushButton {
+                background-color: #8B4513;  /* SaddleBrown button */
+                color: white;
+                font-size: 16px;
+                padding: 10px;
+                border-radius: 10px;
+            }
+            QPushButton:hover {
+                background-color: #A0522D;  /* Slightly lighter brown on hover */
+            }
+            QPushButton:pressed {
+                background-color: #5C4033;  /* Darker brown when pressed */
+            }
+        """)
 
     def connect_to_server(self):
         server_ip = '192.168.1.218'
         username = 'bok'
-        password = 'bok'  
+        password = 'bok'
         remote_file_path = '/home/bok/books.json'
 
         ssh = paramiko.SSHClient()
