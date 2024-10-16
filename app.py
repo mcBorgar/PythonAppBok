@@ -2,24 +2,29 @@ import paramiko
 import json
 
 # Server details
-server_ip = 'server_ip'
-username = 'your_username'
-password = 'your_password'  # It's better to use SSH keys for security
+server_ip = '192.168.1.218'
+username = 'bok'
+password = 'bok'  
 
-# Connect to the server
+# Path to the JSON file on the server
+remote_file_path = '/home/bok/books.json'  # Replace with the actual path on your server
+
+# Connect to the server via SSH
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect(server_ip, username=username, password=password)
 
-# Read the JSON file
+# Open an SFTP session to transfer files
 sftp = ssh.open_sftp()
-remote_file_path = '/path/to/books.json'
+
+# Read the JSON file from the server
 with sftp.open(remote_file_path, 'r') as file:
     books = json.load(file)
 
-# Close connections
+# Close the SFTP and SSH connection
 sftp.close()
 ssh.close()
 
-# Display the books
+# Print the books
 print("Books:", books)
+
