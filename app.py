@@ -7,7 +7,7 @@ username = 'bok'
 password = 'bok'  
 
 # Path to the JSON file on the server
-remote_file_path = '/home/bok/books.json'  # Replace with the actual path on your server
+remote_file_path = '/home/bok/books.json'  # Make sure this path is correct
 
 # Connect to the server via SSH
 ssh = paramiko.SSHClient()
@@ -21,10 +21,23 @@ sftp = ssh.open_sftp()
 with sftp.open(remote_file_path, 'r') as file:
     books = json.load(file)
 
+# Example: Add a new book
+new_book = {
+    "title": "New Book Title",
+    "author": "New Author",
+    "isbn": "1122334455"
+}
+
+# Add the new book to the existing list
+books.append(new_book)
+
+# Write the updated list back to the server
+with sftp.open(remote_file_path, 'w') as file:
+    json.dump(books, file, indent=4)
+
 # Close the SFTP and SSH connection
 sftp.close()
 ssh.close()
 
-# Print the books
-print("Books:", books)
-
+# Print the updated list of books
+print("Updated books:", books)
