@@ -1,8 +1,10 @@
 import paramiko
 import json
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QSizePolicy
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QFileDialog
+from PyQt5.QtGui import QPixmap
+from PIL import Image
+import os
 
 class BookUploader(QWidget):
     def __init__(self):
@@ -27,55 +29,28 @@ class BookUploader(QWidget):
         layout.addWidget(self.book_price_label)
         layout.addWidget(self.book_price_input)
 
+        # Image Upload Button
+        self.upload_image_button = QPushButton("Upload Image")
+        self.upload_image_button.clicked.connect(self.upload_image)
+        layout.addWidget(self.upload_image_button)
+
+        # Image Label
+        self.image_label = QLabel("No image uploaded")
+        layout.addWidget(self.image_label)
+
         # Upload Button
         self.upload_button = QPushButton("OK")
         self.upload_button.clicked.connect(self.upload_book)
         layout.addWidget(self.upload_button)
 
-        # Make the widgets scale with window size
-        self.book_name_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.book_price_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.upload_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
         self.setLayout(layout)
 
-        # Apply light brown theme using QSS (Qt Style Sheets)
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #D2B48C;  /* Light brown background */
-                font-family: Arial, sans-serif;
-            }
-            QLabel {
-                color: #4B2E2E;  /* Darker brown text color */
-                font-size: 16px;
-            }
-            QLineEdit {
-                background-color: #F5DEB3;  /* Wheat color background for input fields */
-                color: #4B2E2E;
-                border: 2px solid #8B4513;  /* SaddleBrown border */
-                border-radius: 5px;
-                padding: 5px;
-                font-size: 14px;
-            }
-            QPushButton {
-                background-color: #8B4513;  /* SaddleBrown button */
-                color: white;
-                font-size: 16px;
-                padding: 10px;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #A0522D;  /* Slightly lighter brown on hover */
-            }
-            QPushButton:pressed {
-                background-color: #5C4033;  /* Darker brown when pressed */
-            }
-        """)
+        self.image_path = None  # To store the path of the uploaded image
 
     def connect_to_server(self):
         server_ip = '192.168.1.218'
         username = 'bok'
-        password = 'bok'
+        password = 'bok'  
         remote_file_path = '/home/bok/books.json'
 
         ssh = paramiko.SSHClient()
@@ -83,6 +58,20 @@ class BookUploader(QWidget):
         ssh.connect(server_ip, username=username, password=password)
 
         return ssh, remote_file_path
+
+    def upload_image(self):
+        # Open a file dialog to select an image
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)", options=options)
+
+        if file_path:
+            self.image_path = file_path
+            self.display_image(file_path)
+
+    def display_image(self, file_path):
+        pixmap = QPixmap(file_path)
+        self.image_label.setPixmap(pixmap.scaled(200, 200, aspectRatioMode=True))  # Resize the image to fit in the label
+        self.image_label.setText("")  # Clear the text label
 
     def upload_book(self):
         book_name = self.book_name_input.text()
@@ -103,7 +92,8 @@ class BookUploader(QWidget):
         # Create a new book entry
         new_book = {
             "name": book_name,
-            "price": book_price
+            "price": book_price,
+            "image": os.path.basename(self.image_path) if self.image_path else None  # Store image filename
         }
         books.append(new_book)
 
@@ -111,12 +101,19 @@ class BookUploader(QWidget):
         with sftp.open(remote_file_path, 'w') as file:
             json.dump(books, file, indent=4)
 
+        # Upload the image to the server if an image was selected
+        if self.image_path:
+            image_remote_path = f'/home/bok/{os.path.basename(self.image_path)}'
+            sftp.put(self.image_path, image_remote_path)  # Upload the image
+
         sftp.close()
         ssh.close()
 
         print("Updated books:", books)
         self.book_name_input.clear()
         self.book_price_input.clear()
+        self.image_label.setText("No image uploaded")
+        self.image_path = None
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
