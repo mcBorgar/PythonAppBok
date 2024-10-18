@@ -13,7 +13,9 @@ from PyQt5.QtWidgets import (
     QFrame,
     QSplitter,
     QMessageBox,
-    QListWidget
+    QListWidget,
+    QMenu,
+    QAction
 )
 from PyQt5.QtCore import Qt, QTimer
 
@@ -47,23 +49,19 @@ class BookUploader(QWidget):
 
         # Buttons for navigation
         add_button = QPushButton("Legg til")  # Add book button
-        remove_button = QPushButton("Fjern")  # Remove book button
         settings_button = QPushButton("Innstillinger")  # Settings button
 
         # Set some styling for the buttons
         button_style = "font-size: 16px; padding: 10px; margin-bottom: 10px;"
         add_button.setStyleSheet(button_style)
-        remove_button.setStyleSheet(button_style)
         settings_button.setStyleSheet(button_style)
 
         # Connect buttons to their respective functions
         add_button.clicked.connect(self.open_add_book_dialog)
-        remove_button.clicked.connect(self.open_remove_book_dialog)
         settings_button.clicked.connect(self.open_settings_dialog)
 
         # Add buttons to the button container layout
         button_container.addWidget(add_button)
-        button_container.addWidget(remove_button)
         button_container.addWidget(settings_button)
 
         # Left container frame for alignment and styling
@@ -77,6 +75,7 @@ class BookUploader(QWidget):
         # Right layout for displaying books
         right_layout = QVBoxLayout()
         self.book_list = QListWidget()
+        self.book_list.itemClicked.connect(self.on_book_clicked)  # Connect item clicked signal
         right_layout.addWidget(self.book_list)
 
         # Create a QSplitter to allow resizing between the left and right sections
@@ -103,6 +102,10 @@ class BookUploader(QWidget):
 
         # Load existing books into the list
         self.load_books()
+
+        # Context menu for book list
+        self.book_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.book_list.customContextMenuRequested.connect(self.show_context_menu)
 
     def load_books(self):
         """Load books from the server and display them in the list."""
@@ -141,203 +144,40 @@ class BookUploader(QWidget):
         add_book_dialog = AddBookDialog(self)  # Pass 'self' as parent
         add_book_dialog.show()  # Show as non-modal
 
-    def open_remove_book_dialog(self):
-        """Open a dialog to remove a book."""
-        remove_book_dialog = RemoveBookDialog(self)  # Pass 'self' as parent
-        remove_book_dialog.show()  # Show as non-modal
-
     def open_settings_dialog(self):
         """Open dialog for settings."""
         settings_dialog = SettingsDialog(self)  # Pass 'self' as parent
         settings_dialog.show()  # Show as non-modal
 
+    def on_book_clicked(self, item):
+        """Handle book selection from the list."""
+        # Extract the book name from the item text (before the price)
+        book_name = item.text().split(" - ")[0]
+        self.open_edit_book_dialog(book_name)  # Open edit dialog directly on click
 
-# Add Book Dialog Class
-class AddBookDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.init_ui()
+    def show_context_menu(self, pos):
+        """Show the context menu for the book list."""
+        item = self.book_list.itemAt(pos)
+        if item:
+            menu = QMenu(self)
 
-    def init_ui(self):
-        self.setWindowTitle("Legg til Bok (Add Book)")
-        self.setMinimumSize(300, 400)  # Set minimum size smaller
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
+            edit_action = QAction("Edit", self)
+            edit_action.triggered.connect(lambda: self.open_edit_book_dialog(item.text().split(" - ")[0]))
+            menu.addAction(edit_action)
 
-        main_layout = QVBoxLayout()
+            remove_action = QAction("Remove", self)
+            remove_action.triggered.connect(lambda: self.remove_book(item.text().split(" - ")[0]))
+            menu.addAction(remove_action)
 
-        # Creating input fields for all book details
-        self.book_name_label = QLabel("Book Name:")
-        self.book_name_input = QLineEdit()
-        main_layout.addWidget(self.book_name_label)
-        main_layout.addWidget(self.book_name_input)
+            menu.exec_(self.book_list.viewport().mapToGlobal(pos))
 
-        self.genre_label = QLabel("Genre:")
-        self.genre_input = QLineEdit()
-        main_layout.addWidget(self.genre_label)
-        main_layout.addWidget(self.genre_input)
+    def open_edit_book_dialog(self, book_name):
+        """Open a dialog to edit the selected book."""
+        edit_book_dialog = EditBookDialog(self, book_name)  # Pass 'self' as parent and selected book name
+        edit_book_dialog.show()  # Show as non-modal
 
-        self.author_label = QLabel("Author:")
-        self.author_input = QLineEdit()
-        main_layout.addWidget(self.author_label)
-        main_layout.addWidget(self.author_input)
-
-        self.summary_label = QLabel("Summary:")
-        self.summary_input = QLineEdit()
-        main_layout.addWidget(self.summary_label)
-        main_layout.addWidget(self.summary_input)
-
-        self.pages_label = QLabel("Pages:")
-        self.pages_input = QLineEdit()
-        main_layout.addWidget(self.pages_label)
-        main_layout.addWidget(self.pages_input)
-
-        self.stock_label = QLabel("Stock:")
-        self.stock_input = QLineEdit()
-        main_layout.addWidget(self.stock_label)
-        main_layout.addWidget(self.stock_input)
-
-        self.book_price_label = QLabel("Book Price:")
-        self.book_price_input = QLineEdit()
-        main_layout.addWidget(self.book_price_label)
-        main_layout.addWidget(self.book_price_input)
-
-        self.upload_button = QPushButton("OK")
-        self.upload_button.clicked.connect(self.upload_book)
-        main_layout.addWidget(self.upload_button)
-
-        self.setLayout(main_layout)
-
-    def connect_to_server(self):
-        """Connect to the server."""
-        server_ip = '192.168.1.218'
-        username = 'bok'
-        password = 'bok'
-        remote_file_path = '/home/bok/books.json'
-
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server_ip, username=username, password=password)
-
-        return ssh, remote_file_path
-
-    def upload_book(self):
-        """Upload the book to the server."""
-        book_name = self.book_name_input.text().strip()
-        genre = self.genre_input.text().strip()
-        author = self.author_input.text().strip()
-        summary = self.summary_input.text().strip()
-        
-        pages = self.pages_input.text().strip()
-        stock = self.stock_input.text().strip()
-        book_price = self.book_price_input.text().strip()
-
-        # Check for empty fields
-        if not book_name or not genre or not author:
-            QMessageBox.warning(self, "Feil", "Vennligst fyll ut boknavn, sjanger, og forfatter.")
-            return
-
-        # Validate numeric fields
-        if not pages.isdigit() or not stock.isdigit() or not self.is_float(book_price):
-            QMessageBox.warning(self, "Feil", "Vennligst skriv inn gyldige tall for sider, lager og pris.")
-            return
-
-        # Attempt to connect to the server
-        try:
-            ssh, remote_file_path = self.connect_to_server()
-            sftp = ssh.open_sftp()
-        except Exception as e:
-            QMessageBox.critical(self, "Serverfeil", f"Kunne ikke koble til serveren: {str(e)}")
-            return
-
-        # Read the JSON file from the server
-        try:
-            with sftp.open(remote_file_path, 'r') as file:
-                books = json.load(file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Feil", "JSON-filen finnes ikke på serveren.")
-            return
-        except json.JSONDecodeError:
-            QMessageBox.critical(self, "Feil", "Kunne ikke lese JSON-filen fra serveren.")
-            return
-
-        # Add the new book to the list
-        new_book = {
-            "name": book_name,
-            "genre": genre,
-            "author": author,
-            "summary": summary,
-            "pages": int(pages),
-            "stock": int(stock),
-            "price": float(book_price)
-        }
-        books.append(new_book)
-
-        # Write the updated list back to the server
-        try:
-            with sftp.open(remote_file_path, 'w') as file:
-                json.dump(books, file, indent=4)
-            QMessageBox.information(self, "Suksess", "Boken ble lagt til!")
-            self.clear_fields()  # Clear input fields after adding
-            self.parent().load_books()  # Refresh the book list in the parent window
-        except Exception as e:
-            QMessageBox.critical(self, "Feil", f"Kunne ikke lagre boken på serveren: {str(e)}")
-
-        finally:
-            sftp.close()
-            ssh.close()
-
-    def is_float(self, value):
-        """Check if a string can be converted to a float."""
-        try:
-            float(value)
-            return True
-        except ValueError:
-            return False
-
-    def clear_fields(self):
-        """Clear input fields after adding a book."""
-        self.book_name_input.clear()
-        self.genre_input.clear()
-        self.author_input.clear()
-        self.summary_input.clear()
-        self.pages_input.clear()
-        self.stock_input.clear()
-        self.book_price_input.clear()
-
-
-# Remove Book Dialog Class
-class RemoveBookDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle("Fjern Bok (Remove Book)")
-        self.setMinimumSize(300, 200)
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
-
-        self.layout = QVBoxLayout()
-        self.book_name_label = QLabel("Book Name to Remove:")
-        self.book_name_input = QLineEdit()
-        self.layout.addWidget(self.book_name_label)
-        self.layout.addWidget(self.book_name_input)
-
-        self.remove_button = QPushButton("Remove")
-        self.remove_button.clicked.connect(self.remove_book)
-        self.layout.addWidget(self.remove_button)
-
-        self.setLayout(self.layout)
-
-    def remove_book(self):
-        """Remove the book from the server."""
-        book_name = self.book_name_input.text().strip()
-
-        if not book_name:
-            QMessageBox.warning(self, "Feil", "Vennligst oppgi boknavn for å fjerne.")
-            return
-
+    def remove_book(self, book_name):
+        """Remove the selected book."""
         # Attempt to connect to the server
         try:
             ssh, remote_file_path = self.connect_to_server()
@@ -371,11 +211,240 @@ class RemoveBookDialog(QDialog):
             with sftp.open(remote_file_path, 'w') as file:
                 json.dump(books, file, indent=4)
             QMessageBox.information(self, "Suksess", "Boken ble fjernet!")
-            self.parent().load_books()  # Refresh the book list in the parent window
-            self.book_name_input.clear()  # Clear input field after removal
+            self.load_books()  # Refresh the book list in the parent window
         except Exception as e:
             QMessageBox.critical(self, "Feil", f"Kunne ikke lagre oppdateringene på serveren: {str(e)}")
 
+        finally:
+            sftp.close()
+            ssh.close()
+
+
+# Add Book Dialog Class
+class AddBookDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("Legg til Bok (Add Book)")
+        self.setMinimumSize(300, 400)  # Set minimum size smaller
+        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
+
+        main_layout = QVBoxLayout()
+
+        # Creating input fields for book details
+        self.name_input = QLineEdit(self)
+        self.name_input.setPlaceholderText("Boknavn (Book Name)")
+
+        self.author_input = QLineEdit(self)
+        self.author_input.setPlaceholderText("Forfatter (Author)")
+
+        self.pages_input = QLineEdit(self)
+        self.pages_input.setPlaceholderText("Antall sider (Pages)")
+
+        self.genre_input = QLineEdit(self)
+        self.genre_input.setPlaceholderText("Sjanger (Genre)")
+
+        self.summary_input = QLineEdit(self)
+        self.summary_input.setPlaceholderText("Sammendrag (Summary)")
+
+        self.price_input = QLineEdit(self)
+        self.price_input.setPlaceholderText("Pris (Price)")
+
+        self.stock_input = QLineEdit(self)
+        self.stock_input.setPlaceholderText("Antall på lager (Stock)")
+
+        # Adding the input fields to the main layout
+        main_layout.addWidget(self.name_input)
+        main_layout.addWidget(self.author_input)
+        main_layout.addWidget(self.pages_input)
+        main_layout.addWidget(self.genre_input)
+        main_layout.addWidget(self.summary_input)
+        main_layout.addWidget(self.price_input)
+        main_layout.addWidget(self.stock_input)
+
+        add_button = QPushButton("Legg til Bok (Add Book)", self)
+        add_button.clicked.connect(self.add_book)
+        main_layout.addWidget(add_button)
+
+        self.setLayout(main_layout)
+
+    def add_book(self):
+        """Add book to the server."""
+        book = {
+            "name": self.name_input.text(),
+            "author": self.author_input.text(),
+            "pages": self.pages_input.text(),
+            "genre": self.genre_input.text(),
+            "summary": self.summary_input.text(),
+            "price": self.price_input.text(),
+            "stock": self.stock_input.text()
+        }
+
+        # Attempt to connect to the server
+        try:
+            ssh, remote_file_path = self.connect_to_server()
+            sftp = ssh.open_sftp()
+        except Exception as e:
+            QMessageBox.critical(self, "Serverfeil", f"Kunne ikke koble til serveren: {str(e)}")
+            return
+
+        # Read the existing books
+        try:
+            with sftp.open(remote_file_path, 'r') as file:
+                books = json.load(file)
+        except FileNotFoundError:
+            # If file doesn't exist, start with an empty list
+            books = []
+        except json.JSONDecodeError:
+            QMessageBox.critical(self, "Feil", "Kunne ikke lese JSON-filen fra serveren.")
+            return
+
+        # Add the new book
+        books.append(book)
+
+        # Write the updated list back to the server
+        try:
+            with sftp.open(remote_file_path, 'w') as file:
+                json.dump(books, file, indent=4)
+            QMessageBox.information(self, "Suksess", "Boken ble lagt til!")  # Success message
+            self.accept()  # Close the dialog on success
+        except Exception as e:
+            QMessageBox.critical(self, "Feil", f"Kunne ikke lagre boken på serveren: {str(e)}")
+        finally:
+            sftp.close()
+            ssh.close()
+
+    def connect_to_server(self):
+        """Connect to the server."""
+        server_ip = '192.168.1.218'
+        username = 'bok'
+        password = 'bok'
+        remote_file_path = '/home/bok/books.json'
+
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(server_ip, username=username, password=password)
+
+        return ssh, remote_file_path
+
+
+# Edit Book Dialog Class
+class EditBookDialog(QDialog):
+    def __init__(self, parent, book_name):
+        super().__init__(parent)
+        self.book_name = book_name
+        self.init_ui()
+        self.load_book_details()
+
+    def init_ui(self):
+        self.setWindowTitle("Rediger Bok (Edit Book)")
+        self.setMinimumSize(300, 400)  # Set minimum size smaller
+        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
+
+        main_layout = QVBoxLayout()
+
+        # Creating input fields for book details
+        self.name_input = QLineEdit(self)
+        self.name_input.setPlaceholderText("Boknavn (Book Name)")
+
+        self.author_input = QLineEdit(self)
+        self.author_input.setPlaceholderText("Forfatter (Author)")
+
+        self.pages_input = QLineEdit(self)
+        self.pages_input.setPlaceholderText("Antall sider (Pages)")
+
+        self.genre_input = QLineEdit(self)
+        self.genre_input.setPlaceholderText("Sjanger (Genre)")
+
+        self.summary_input = QLineEdit(self)
+        self.summary_input.setPlaceholderText("Sammendrag (Summary)")
+
+        self.price_input = QLineEdit(self)
+        self.price_input.setPlaceholderText("Pris (Price)")
+
+        self.stock_input = QLineEdit(self)
+        self.stock_input.setPlaceholderText("Antall på lager (Stock)")
+
+        # Adding the input fields to the main layout
+        main_layout.addWidget(self.name_input)
+        main_layout.addWidget(self.author_input)
+        main_layout.addWidget(self.pages_input)
+        main_layout.addWidget(self.genre_input)
+        main_layout.addWidget(self.summary_input)
+        main_layout.addWidget(self.price_input)
+        main_layout.addWidget(self.stock_input)
+
+        save_button = QPushButton("Lagre endringer (Save Changes)", self)
+        save_button.clicked.connect(self.save_changes)
+        main_layout.addWidget(save_button)
+
+        self.setLayout(main_layout)
+
+    def load_book_details(self):
+        """Load the book details into the input fields."""
+        try:
+            ssh, remote_file_path = self.connect_to_server()
+            sftp = ssh.open_sftp()
+            with sftp.open(remote_file_path, 'r') as file:
+                books = json.load(file)
+
+            # Find the book by name
+            for book in books:
+                if book['name'] == self.book_name:
+                    self.name_input.setText(book['name'])
+                    self.author_input.setText(book.get('author', ''))
+                    self.pages_input.setText(book.get('pages', ''))
+                    self.genre_input.setText(book.get('genre', ''))
+                    self.summary_input.setText(book.get('summary', ''))
+                    self.price_input.setText(book['price'])
+                    self.stock_input.setText(book.get('stock', ''))
+                    break
+            else:
+                QMessageBox.warning(self, "Feil", "Boken ble ikke funnet.")
+        except Exception as e:
+            QMessageBox.critical(self, "Feil", f"Kunne ikke laste boken: {str(e)}")
+        finally:
+            sftp.close()
+            ssh.close()
+
+    def save_changes(self):
+        """Save the changes made to the book."""
+        updated_book = {
+            "name": self.name_input.text(),
+            "author": self.author_input.text(),
+            "pages": self.pages_input.text(),
+            "genre": self.genre_input.text(),
+            "summary": self.summary_input.text(),
+            "price": self.price_input.text(),
+            "stock": self.stock_input.text()
+        }
+
+        try:
+            ssh, remote_file_path = self.connect_to_server()
+            sftp = ssh.open_sftp()
+            with sftp.open(remote_file_path, 'r') as file:
+                books = json.load(file)
+
+            # Find the book to update
+            for i, book in enumerate(books):
+                if book['name'] == self.book_name:
+                    books[i] = updated_book  # Update book information
+                    break
+            else:
+                QMessageBox.warning(self, "Feil", "Boken ble ikke funnet.")
+                return
+
+            # Write the updated list back to the server
+            with sftp.open(remote_file_path, 'w') as file:
+                json.dump(books, file, indent=4)
+            QMessageBox.information(self, "Suksess", "Endringer lagret!")  # Success message
+            self.accept()  # Close the dialog on success
+        except Exception as e:
+            QMessageBox.critical(self, "Feil", f"Kunne ikke lagre endringene: {str(e)}")
         finally:
             sftp.close()
             ssh.close()
@@ -402,20 +471,17 @@ class SettingsDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Innstillinger (Settings)")
-        self.setMinimumSize(300, 200)
+        self.setMinimumSize(300, 200)  # Set minimum size smaller
         self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
 
         layout = QVBoxLayout()
-        settings_label = QLabel("Settings options can be added here.")
-        layout.addWidget(settings_label)
-
+        layout.addWidget(QLabel("Innstillinger vil komme snart."))  # Placeholder text
         self.setLayout(layout)
 
 
-# Main Application
+# Main execution
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    main_window = BookUploader()
-    main_window.show()
+    window = BookUploader()
+    window.show()
     sys.exit(app.exec_())
