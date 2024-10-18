@@ -9,3 +9,5 @@ Icon=/home/elev/Documents/book-icon.png
 Terminal=false
 Type=Application
 Categories=Utility;
+
+chmod +x bok.desktop
