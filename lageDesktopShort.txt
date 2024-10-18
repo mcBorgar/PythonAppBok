@@ -1,0 +1,11 @@
+lag en bok.desktop fil i desktop
+legg inn denne koden
+[Desktop Entry]
+Version=1.0
+Name=Book Uploader
+Comment=Upload books to the server
+Exec=/usr/bin/python3 /home/elev/Documents/GitHub/PythonAppBok/borgarsTest.py
+Icon=/home/elev/Documents/book-icon.png
+Terminal=false
+Type=Application
+Categories=Utility;
