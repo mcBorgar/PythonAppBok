@@ -168,6 +168,31 @@ class AddBookDialog(QDialog):
         main_layout.addWidget(self.book_name_label)
         main_layout.addWidget(self.book_name_input)
 
+        self.book_name_label = QLabel("Genre:")
+        self.book_name_input = QLineEdit()
+        main_layout.addWidget(self.book_name_label)
+        main_layout.addWidget(self.book_name_input)
+
+        self.book_name_label = QLabel("Author:")
+        self.book_name_input = QLineEdit()
+        main_layout.addWidget(self.book_name_label)
+        main_layout.addWidget(self.book_name_input)
+
+        self.book_price_label = QLabel("Summary:")
+        self.book_price_input = QLineEdit()
+        main_layout.addWidget(self.book_price_label)
+        main_layout.addWidget(self.book_price_input)
+
+        self.book_price_label = QLabel("Pages:")
+        self.book_price_input = QLineEdit()
+        main_layout.addWidget(self.book_price_label)
+        main_layout.addWidget(self.book_price_input)
+
+        self.book_name_label = QLabel("Stock:")
+        self.book_name_input = QLineEdit()
+        main_layout.addWidget(self.book_name_label)
+        main_layout.addWidget(self.book_name_input)
+
         self.book_price_label = QLabel("Book Price:")
         self.book_price_input = QLineEdit()
         main_layout.addWidget(self.book_price_label)
