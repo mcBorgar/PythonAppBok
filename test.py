@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QListWidget
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 
 
 # Main Window Class (Home Page)
@@ -23,18 +23,24 @@ class BookUploader(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.timer = QTimer(self)  # Create a QTimer instance
+        self.timer.timeout.connect(self.load_books)  # Connect to the load_books method
+        self.timer.start(5000)  # Check for updates every 5 seconds
 
     def init_ui(self):
         self.setWindowTitle("Library App - Home")
         self.setGeometry(100, 100, 1200, 800)  # Increased main window size
+        self.setStyleSheet("background-color: #ECD2A3;")
 
         # Create main horizontal layout
         main_layout = QHBoxLayout()
 
         # Left side layout for buttons and headline
         left_layout = QVBoxLayout()
+        left_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins around the left bar
+        left_layout.setSpacing(0) 
         headline = QLabel("Bibliotek")
-        headline.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        headline.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 200px;")
 
         # Create a vertical layout for the buttons
         button_container = QVBoxLayout()
@@ -66,7 +72,7 @@ class BookUploader(QWidget):
         # Left container frame for alignment and styling
         left_container = QFrame()
         left_container.setLayout(button_container)
-        left_container.setStyleSheet("background-color: #F0EAD6; padding: 20px;")  # Light brown background
+        left_container.setStyleSheet("background-color: #73A96F;")  # Light brown background
 
         # Add the left container to the left layout
         left_layout.addWidget(left_container)
