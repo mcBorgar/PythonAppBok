@@ -39,38 +39,38 @@ class BookUploader(QWidget):
 
         self.setLayout(layout)
 
-        # Apply light brown theme using QSS (Qt Style Sheets)
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #D2B48C;  /* Light brown background */
-                font-family: Arial, sans-serif;
-            }
-            QLabel {
-                color: #4B2E2E;  /* Darker brown text color */
-                font-size: 16px;
-            }
-            QLineEdit {
-                background-color: #F5DEB3;  /* Wheat color background for input fields */
-                color: #4B2E2E;
-                border: 2px solid #8B4513;  /* SaddleBrown border */
-                border-radius: 5px;
-                padding: 5px;
-                font-size: 14px;
-            }
-            QPushButton {
-                background-color: #8B4513;  /* SaddleBrown button */
-                color: white;
-                font-size: 16px;
-                padding: 10px;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #A0522D;  /* Slightly lighter brown on hover */
-            }
-            QPushButton:pressed {
-                background-color: #5C4033;  /* Darker brown when pressed */
-            }
-        """)
+        # # Apply light brown theme using QSS (Qt Style Sheets)
+        # self.setStyleSheet("""
+        #     QWidget {
+        #         background-color: #D2B48C;  /* Light brown background */
+        #         font-family: Arial, sans-serif;
+        #     }
+        #     QLabel {
+        #         color: #4B2E2E;  /* Darker brown text color */
+        #         font-size: 16px;
+        #     }
+        #     QLineEdit {
+        #         background-color: #F5DEB3;  /* Wheat color background for input fields */
+        #         color: #4B2E2E;
+        #         border: 2px solid #8B4513;  /* SaddleBrown border */
+        #         border-radius: 5px;
+        #         padding: 5px;
+        #         font-size: 14px;
+        #     }
+        #     QPushButton {
+        #         background-color: #8B4513;  /* SaddleBrown button */
+        #         color: white;
+        #         font-size: 16px;
+        #         padding: 10px;
+        #         border-radius: 10px;
+        #     }
+        #     QPushButton:hover {
+        #         background-color: #A0522D;  /* Slightly lighter brown on hover */
+        #     }
+        #     QPushButton:pressed {
+        #         background-color: #5C4033;  /* Darker brown when pressed */
+        #     }
+        # """)
 
     def connect_to_server(self):
         server_ip = '192.168.1.218'

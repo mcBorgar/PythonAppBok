@@ -21,12 +21,7 @@ sftp = ssh.open_sftp()
 with sftp.open(remote_file_path, 'r') as file:
     books = json.load(file)
 
-# Example: Add a new book
-new_book = {
-    "title": "New Book Title",
-    "author": "New Author",
-    "isbn": "1122334455"
-}
+
 
 # Add the new book to the existing list
 books.append(new_book)
