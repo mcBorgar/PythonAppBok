@@ -1,9 +1,22 @@
 import paramiko
 import json
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QDialog, QHBoxLayout, QFrame, QSplitter, QMessageBox
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QMovie
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QDialog,
+    QHBoxLayout,
+    QFrame,
+    QSplitter,
+    QMessageBox,
+    QListWidget
+)
+from PyQt5.QtCore import Qt
+
 
 # Main Window Class (Home Page)
 class BookUploader(QWidget):
@@ -58,11 +71,10 @@ class BookUploader(QWidget):
         # Add the left container to the left layout
         left_layout.addWidget(left_container)
 
-        # Right layout (placeholder for future objects)
+        # Right layout for displaying books
         right_layout = QVBoxLayout()
-        right_placeholder = QLabel("Right side content goes here")
-        right_placeholder.setAlignment(Qt.AlignCenter)
-        right_layout.addWidget(right_placeholder)
+        self.book_list = QListWidget()
+        right_layout.addWidget(self.book_list)
 
         # Create a QSplitter to allow resizing between the left and right sections
         splitter = QSplitter(Qt.Horizontal)
@@ -86,20 +98,55 @@ class BookUploader(QWidget):
         # Set the layout for the main window
         self.setLayout(main_layout)
 
+        # Load existing books into the list
+        self.load_books()
+
+    def load_books(self):
+        """Load books from the server and display them in the list."""
+        try:
+            ssh, remote_file_path = self.connect_to_server()
+            sftp = ssh.open_sftp()
+            with sftp.open(remote_file_path, 'r') as file:
+                books = json.load(file)
+
+            # Clear the current list and add all book names with prices
+            self.book_list.clear()
+            if isinstance(books, list):  # Ensure books is a list
+                for book in books:
+                    self.book_list.addItem(f"{book['name']} - {book['price']} NOK")
+        except Exception as e:
+            QMessageBox.critical(self, "Feil", f"Kunne ikke laste bøker: {str(e)}")
+        finally:
+            sftp.close()
+            ssh.close()
+
+    def connect_to_server(self):
+        """Connect to the server."""
+        server_ip = '192.168.1.218'
+        username = 'bok'
+        password = 'bok'
+        remote_file_path = '/home/bok/books.json'
+
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(server_ip, username=username, password=password)
+
+        return ssh, remote_file_path
+
     def open_add_book_dialog(self):
         """Open a dialog to add a book."""
-        self.add_book_dialog = AddBookDialog(self)  # Pass 'self' as parent to lock the popup to this window
-        self.add_book_dialog.exec_()  # Show dialog as a modal popup
+        add_book_dialog = AddBookDialog(self)  # Pass 'self' as parent
+        add_book_dialog.show()  # Show as non-modal
 
     def open_remove_book_dialog(self):
         """Open a dialog to remove a book."""
-        self.remove_book_dialog = RemoveBookDialog(self)  # Pass 'self' as parent
-        self.remove_book_dialog.exec_()  # Show dialog as a modal popup
+        remove_book_dialog = RemoveBookDialog(self)  # Pass 'self' as parent
+        remove_book_dialog.show()  # Show as non-modal
 
     def open_settings_dialog(self):
         """Open dialog for settings."""
-        self.settings_dialog = SettingsDialog(self)  # Pass 'self' as parent
-        self.settings_dialog.exec_()  # Show dialog as a modal popup
+        settings_dialog = SettingsDialog(self)  # Pass 'self' as parent
+        settings_dialog.show()  # Show as non-modal
 
 
 # Add Book Dialog Class
@@ -110,19 +157,11 @@ class AddBookDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Legg til Bok (Add Book)")
-        self.setFixedSize(400, 300)  # Adjust size to make it more usable
+        self.setMinimumSize(300, 200)  # Set minimum size smaller
         self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
         self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
 
         main_layout = QVBoxLayout()
-
-        # Loading spinner
-        self.loading_label = QLabel(self)
-        self.loading_label.setAlignment(Qt.AlignCenter)
-        self.loading_movie = QMovie("path_to_your_spinner.gif")  # Set the path to your loading GIF
-        self.loading_label.setMovie(self.loading_movie)
-        self.loading_label.setVisible(False)  # Initially hide it
-        main_layout.addWidget(self.loading_label)
 
         self.book_name_label = QLabel("Book Name:")
         self.book_name_input = QLineEdit()
@@ -162,18 +201,12 @@ class AddBookDialog(QDialog):
             QMessageBox.warning(self, "Feil", "Vennligst skriv inn både navn og pris.")
             return
 
-        # Show loading spinner
-        self.loading_label.setVisible(True)
-        self.loading_movie.start()  # Start the loading animation
-
         # Attempt to connect to the server
         try:
             ssh, remote_file_path = self.connect_to_server()
             sftp = ssh.open_sftp()
         except Exception as e:
             QMessageBox.critical(self, "Serverfeil", f"Kunne ikke koble til serveren: {str(e)}")
-            self.loading_label.setVisible(False)  # Hide loading spinner after handling error
-            self.loading_movie.stop()  # Stop the loading animation
             return
 
         # Read the JSON file from the server
@@ -187,7 +220,7 @@ class AddBookDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Feil", f"Kunne ikke lese JSON-filen: {str(e)}")
         else:
-            # Check if books is a dictionary
+            # Ensure books is a list
             if isinstance(books, dict):
                 books = []  # Initialize books as an empty list if it's a dict
 
@@ -202,36 +235,16 @@ class AddBookDialog(QDialog):
             try:
                 with sftp.open(remote_file_path, 'w') as file:
                     json.dump(books, file, indent=4)
+                self.parent().load_books()  # Refresh the book list
+                QMessageBox.information(self, "Suksess", "Boken har blitt lagt til.")
+                self.book_name_input.clear()
+                self.book_price_input.clear()
             except Exception as e:
                 QMessageBox.critical(self, "Feil", f"Kunne ikke skrive til JSON-filen: {str(e)}")
-                sftp.close()
-                ssh.close()
-                self.loading_label.setVisible(False)  # Hide loading spinner
-                self.loading_movie.stop()  # Stop the loading animation
                 return
-
-            print("Oppdaterte bøker:", books)
-            self.book_name_input.clear()
-            self.book_price_input.clear()
-
         finally:
             sftp.close()
             ssh.close()
-
-        self.loading_label.setVisible(False)  # Hide loading spinner
-        self.loading_movie.stop()  # Stop the loading animation
-
-        # Show success message
-        success_message = QMessageBox(self)
-        success_message.setWindowTitle("Suksess")
-        success_message.setText("Boken har blitt lagt til.")
-        success_message.setIcon(QMessageBox.Information)
-
-        # Move the success message to the side and make it stay for 2 seconds
-        success_message.setGeometry(self.x() + 50, self.y() + 50, 300, 100)  # Position the message box slightly to the side
-
-        success_message.show()
-        QTimer.singleShot(2000, success_message.close)  # Close after 2 seconds
 
 
 # Remove Book Dialog Class
@@ -242,12 +255,13 @@ class RemoveBookDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Fjern Bok (Remove Book)")
-        self.setFixedSize(400, 300)  # Adjust size for usability
+        self.setMinimumSize(300, 200)  # Set minimum size smaller
         self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
 
         main_layout = QVBoxLayout()
 
-        self.book_name_label = QLabel("Book Name to Remove:")
+        self.book_name_label = QLabel("Book Name:")
         self.book_name_input = QLineEdit()
         main_layout.addWidget(self.book_name_label)
         main_layout.addWidget(self.book_name_input)
@@ -272,38 +286,45 @@ class RemoveBookDialog(QDialog):
         return ssh, remote_file_path
 
     def remove_book(self):
-        """Remove a book from the server."""
-        book_name_to_remove = self.book_name_input.text()
+        """Remove the book from the server."""
+        book_name = self.book_name_input.text()
 
-        if not book_name_to_remove:
-            QMessageBox.warning(self, "Feil", "Vennligst skriv inn navnet på boken som skal fjernes.")
+        if not book_name:
+            QMessageBox.warning(self, "Feil", "Vennligst skriv inn boknavn.")
             return
 
+        # Attempt to connect to the server
         try:
             ssh, remote_file_path = self.connect_to_server()
             sftp = ssh.open_sftp()
+        except Exception as e:
+            QMessageBox.critical(self, "Serverfeil", f"Kunne ikke koble til serveren: {str(e)}")
+            return
+
+        # Read the JSON file from the server
+        try:
             with sftp.open(remote_file_path, 'r') as file:
                 books = json.load(file)
-
-            # Check if books is a dictionary
-            if isinstance(books, dict):
-                books = []  # Initialize books as an empty list if it's a dict
-
-            # Filter out the book to be removed
-            updated_books = [book for book in books if book['name'] != book_name_to_remove]
-
-            if len(updated_books) == len(books):
-                QMessageBox.warning(self, "Feil", "Boken ble ikke funnet.")
-                return
+        except FileNotFoundError:
+            QMessageBox.critical(self, "Feil", "JSON-filen finnes ikke på serveren.")
+        except json.JSONDecodeError:
+            QMessageBox.critical(self, "Feil", "JSON-filen er ugyldig eller kan ikke leses.")
+        except Exception as e:
+            QMessageBox.critical(self, "Feil", f"Kunne ikke lese JSON-filen: {str(e)}")
+        else:
+            # Find the book to remove
+            books = [book for book in books if book['name'] != book_name]
 
             # Write the updated list back to the server
-            with sftp.open(remote_file_path, 'w') as file:
-                json.dump(updated_books, file, indent=4)
-
-            QMessageBox.information(self, "Suksess", "Boken har blitt fjernet.")
-            self.book_name_input.clear()
-        except Exception as e:
-            QMessageBox.critical(self, "Feil", f"Kunne ikke håndtere forespørselen: {str(e)}")
+            try:
+                with sftp.open(remote_file_path, 'w') as file:
+                    json.dump(books, file, indent=4)
+                self.parent().load_books()  # Refresh the book list
+                QMessageBox.information(self, "Suksess", "Boken har blitt fjernet.")
+                self.book_name_input.clear()
+            except Exception as e:
+                QMessageBox.critical(self, "Feil", f"Kunne ikke skrive til JSON-filen: {str(e)}")
+                return
         finally:
             sftp.close()
             ssh.close()
@@ -317,19 +338,46 @@ class SettingsDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Innstillinger (Settings)")
-        self.setFixedSize(400, 300)  # Adjust size for usability
+        self.setMinimumSize(300, 200)  # Set minimum size smaller
         self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
 
         main_layout = QVBoxLayout()
 
-        # Add some setting options
-        setting_label = QLabel("Innstillinger kommer snart...")
-        main_layout.addWidget(setting_label)
+        self.server_ip_label = QLabel("Server IP:")
+        self.server_ip_input = QLineEdit("192.168.1.218")
+        main_layout.addWidget(self.server_ip_label)
+        main_layout.addWidget(self.server_ip_input)
+
+        self.username_label = QLabel("Brukernavn (Username):")
+        self.username_input = QLineEdit("bok")
+        main_layout.addWidget(self.username_label)
+        main_layout.addWidget(self.username_input)
+
+        self.password_label = QLabel("Passord (Password):")
+        self.password_input = QLineEdit("bok")
+        self.password_input.setEchoMode(QLineEdit.Password)  # Hide password input
+        main_layout.addWidget(self.password_label)
+        main_layout.addWidget(self.password_input)
+
+        self.save_button = QPushButton("Lagre (Save)")
+        self.save_button.clicked.connect(self.save_settings)
+        main_layout.addWidget(self.save_button)
 
         self.setLayout(main_layout)
 
+    def save_settings(self):
+        """Save settings logic (you can expand this as needed)."""
+        server_ip = self.server_ip_input.text()
+        username = self.username_input.text()
+        password = self.password_input.text()
 
-# Main application loop
+        # Here, you could save these settings to a config file or similar.
+        # For now, just show a message box.
+        QMessageBox.information(self, "Innstillinger Lagret", f"IP: {server_ip}\nBrukernavn: {username}\nPassord: {password}")
+
+
+# Main entry point
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     main_window = BookUploader()
