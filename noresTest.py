@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QListWidget
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 
 
 # Main Window Class (Home Page)
@@ -23,6 +23,9 @@ class BookUploader(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.timer = QTimer(self)  # Create a QTimer instance
+        self.timer.timeout.connect(self.load_books)  # Connect to the load_books method
+        self.timer.start(5000)  # Check for updates every 5 seconds
 
     def init_ui(self):
         self.setWindowTitle("Library App - Home")
