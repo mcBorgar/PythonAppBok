@@ -153,7 +153,22 @@ class BookUploader(QWidget):
         """Handle book selection from the list."""
         # Extract the book name from the item text (before the price)
         book_name = item.text().split(" - ")[0]
-        self.open_edit_book_dialog(book_name)  # Open edit dialog directly on click
+        
+        # Ask the user if they want to edit or delete the book
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("Choose Action")
+        msg_box.setText(f"Do you want to edit or delete '{book_name}'?")
+        edit_button = msg_box.addButton("Edit", QMessageBox.AcceptRole)
+        delete_button = msg_box.addButton("Delete", QMessageBox.RejectRole)
+        cancel_button = msg_box.addButton("Cancel", QMessageBox.DestructiveRole)
+        
+        msg_box.exec_()
+        
+        # Perform actions based on user selection
+        if msg_box.clickedButton() == edit_button:
+            self.open_edit_book_dialog(book_name)  # Open edit dialog
+        elif msg_box.clickedButton() == delete_button:
+            self.remove_book(book_name)  # Remove the book
 
     def show_context_menu(self, pos):
         """Show the context menu for the book list."""
@@ -229,238 +244,141 @@ class AddBookDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle("Legg til Bok (Add Book)")
         self.setMinimumSize(300, 400)  # Set minimum size smaller
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
+        self.setStyleSheet("background-color: #E8EAF6;")
 
-        main_layout = QVBoxLayout()
+        layout = QVBoxLayout()
 
-        # Creating input fields for book details
-        self.name_input = QLineEdit(self)
-        self.name_input.setPlaceholderText("Boknavn (Book Name)")
+        name_label = QLabel("Navn på Bok (Book Name):")
+        self.name_input = QLineEdit()
+        layout.addWidget(name_label)
+        layout.addWidget(self.name_input)
 
-        self.author_input = QLineEdit(self)
-        self.author_input.setPlaceholderText("Forfatter (Author)")
+        price_label = QLabel("Pris (Price):")
+        self.price_input = QLineEdit()
+        layout.addWidget(price_label)
+        layout.addWidget(self.price_input)
 
-        self.pages_input = QLineEdit(self)
-        self.pages_input.setPlaceholderText("Antall sider (Pages)")
-
-        self.genre_input = QLineEdit(self)
-        self.genre_input.setPlaceholderText("Sjanger (Genre)")
-
-        self.summary_input = QLineEdit(self)
-        self.summary_input.setPlaceholderText("Sammendrag (Summary)")
-
-        self.price_input = QLineEdit(self)
-        self.price_input.setPlaceholderText("Pris (Price)")
-
-        self.stock_input = QLineEdit(self)
-        self.stock_input.setPlaceholderText("Antall på lager (Stock)")
-
-        # Adding the input fields to the main layout
-        main_layout.addWidget(self.name_input)
-        main_layout.addWidget(self.author_input)
-        main_layout.addWidget(self.pages_input)
-        main_layout.addWidget(self.genre_input)
-        main_layout.addWidget(self.summary_input)
-        main_layout.addWidget(self.price_input)
-        main_layout.addWidget(self.stock_input)
-
-        add_button = QPushButton("Legg til Bok (Add Book)", self)
+        add_button = QPushButton("Legg til Bok")
         add_button.clicked.connect(self.add_book)
-        main_layout.addWidget(add_button)
+        layout.addWidget(add_button)
 
-        self.setLayout(main_layout)
+        self.setLayout(layout)
 
     def add_book(self):
-        """Add book to the server."""
-        book = {
-            "name": self.name_input.text(),
-            "author": self.author_input.text(),
-            "pages": self.pages_input.text(),
-            "genre": self.genre_input.text(),
-            "summary": self.summary_input.text(),
-            "price": self.price_input.text(),
-            "stock": self.stock_input.text()
-        }
+        book_name = self.name_input.text()
+        book_price = self.price_input.text()
 
-        # Attempt to connect to the server
+        if not book_name or not book_price:
+            QMessageBox.warning(self, "Feil", "Begge feltene må fylles ut.")
+            return
+
         try:
-            ssh, remote_file_path = self.connect_to_server()
+            ssh, remote_file_path = self.parent().connect_to_server()
             sftp = ssh.open_sftp()
-        except Exception as e:
-            QMessageBox.critical(self, "Serverfeil", f"Kunne ikke koble til serveren: {str(e)}")
-            return
 
-        # Read the existing books
-        try:
-            with sftp.open(remote_file_path, 'r') as file:
-                books = json.load(file)
-        except FileNotFoundError:
-            # If file doesn't exist, start with an empty list
-            books = []
-        except json.JSONDecodeError:
-            QMessageBox.critical(self, "Feil", "Kunne ikke lese JSON-filen fra serveren.")
-            return
+            try:
+                with sftp.open(remote_file_path, 'r') as file:
+                    books = json.load(file)
+            except FileNotFoundError:
+                books = []
+            except json.JSONDecodeError:
+                QMessageBox.critical(self, "Feil", "Kunne ikke lese JSON-filen fra serveren.")
+                return
 
-        # Add the new book
-        books.append(book)
+            books.append({"name": book_name, "price": book_price})
 
-        # Write the updated list back to the server
-        try:
             with sftp.open(remote_file_path, 'w') as file:
                 json.dump(books, file, indent=4)
-            QMessageBox.information(self, "Suksess", "Boken ble lagt til!")  # Success message
-            self.accept()  # Close the dialog on success
+
+            QMessageBox.information(self, "Suksess", "Bok lagt til!")
+
+            self.parent().load_books()  # Refresh the book list in the parent window
+
         except Exception as e:
-            QMessageBox.critical(self, "Feil", f"Kunne ikke lagre boken på serveren: {str(e)}")
+            QMessageBox.critical(self, "Feil", f"Kunne ikke koble til serveren: {str(e)}")
+
         finally:
             sftp.close()
             ssh.close()
 
-    def connect_to_server(self):
-        """Connect to the server."""
-        server_ip = '192.168.1.218'
-        username = 'bok'
-        password = 'bok'
-        remote_file_path = '/home/bok/books.json'
-
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server_ip, username=username, password=password)
-
-        return ssh, remote_file_path
+        self.close()
 
 
 # Edit Book Dialog Class
 class EditBookDialog(QDialog):
-    def __init__(self, parent, book_name):
+    def __init__(self, parent=None, book_name=None):
         super().__init__(parent)
         self.book_name = book_name
         self.init_ui()
-        self.load_book_details()
 
     def init_ui(self):
-        self.setWindowTitle("Rediger Bok (Edit Book)")
-        self.setMinimumSize(300, 400)  # Set minimum size smaller
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
+        self.setWindowTitle(f"Rediger Bok - {self.book_name}")
+        self.setMinimumSize(300, 400)
+        self.setStyleSheet("background-color: #FFF3E0;")
 
-        main_layout = QVBoxLayout()
+        layout = QVBoxLayout()
 
-        # Creating input fields for book details
-        self.name_input = QLineEdit(self)
-        self.name_input.setPlaceholderText("Boknavn (Book Name)")
+        name_label = QLabel("Nytt Navn på Bok (New Book Name):")
+        self.name_input = QLineEdit(self.book_name)  # Prefill with current name
+        layout.addWidget(name_label)
+        layout.addWidget(self.name_input)
 
-        self.author_input = QLineEdit(self)
-        self.author_input.setPlaceholderText("Forfatter (Author)")
+        price_label = QLabel("Ny Pris (New Price):")
+        self.price_input = QLineEdit()
+        layout.addWidget(price_label)
+        layout.addWidget(self.price_input)
 
-        self.pages_input = QLineEdit(self)
-        self.pages_input.setPlaceholderText("Antall sider (Pages)")
-
-        self.genre_input = QLineEdit(self)
-        self.genre_input.setPlaceholderText("Sjanger (Genre)")
-
-        self.summary_input = QLineEdit(self)
-        self.summary_input.setPlaceholderText("Sammendrag (Summary)")
-
-        self.price_input = QLineEdit(self)
-        self.price_input.setPlaceholderText("Pris (Price)")
-
-        self.stock_input = QLineEdit(self)
-        self.stock_input.setPlaceholderText("Antall på lager (Stock)")
-
-        # Adding the input fields to the main layout
-        main_layout.addWidget(self.name_input)
-        main_layout.addWidget(self.author_input)
-        main_layout.addWidget(self.pages_input)
-        main_layout.addWidget(self.genre_input)
-        main_layout.addWidget(self.summary_input)
-        main_layout.addWidget(self.price_input)
-        main_layout.addWidget(self.stock_input)
-
-        save_button = QPushButton("Lagre endringer (Save Changes)", self)
+        save_button = QPushButton("Lagre Endringer (Save Changes)")
         save_button.clicked.connect(self.save_changes)
-        main_layout.addWidget(save_button)
+        layout.addWidget(save_button)
 
-        self.setLayout(main_layout)
-
-    def load_book_details(self):
-        """Load the book details into the input fields."""
-        try:
-            ssh, remote_file_path = self.connect_to_server()
-            sftp = ssh.open_sftp()
-            with sftp.open(remote_file_path, 'r') as file:
-                books = json.load(file)
-
-            # Find the book by name
-            for book in books:
-                if book['name'] == self.book_name:
-                    self.name_input.setText(book['name'])
-                    self.author_input.setText(book.get('author', ''))
-                    self.pages_input.setText(book.get('pages', ''))
-                    self.genre_input.setText(book.get('genre', ''))
-                    self.summary_input.setText(book.get('summary', ''))
-                    self.price_input.setText(book['price'])
-                    self.stock_input.setText(book.get('stock', ''))
-                    break
-            else:
-                QMessageBox.warning(self, "Feil", "Boken ble ikke funnet.")
-        except Exception as e:
-            QMessageBox.critical(self, "Feil", f"Kunne ikke laste boken: {str(e)}")
-        finally:
-            sftp.close()
-            ssh.close()
+        self.setLayout(layout)
 
     def save_changes(self):
-        """Save the changes made to the book."""
-        updated_book = {
-            "name": self.name_input.text(),
-            "author": self.author_input.text(),
-            "pages": self.pages_input.text(),
-            "genre": self.genre_input.text(),
-            "summary": self.summary_input.text(),
-            "price": self.price_input.text(),
-            "stock": self.stock_input.text()
-        }
+        new_book_name = self.name_input.text()
+        new_book_price = self.price_input.text()
+
+        if not new_book_name or not new_book_price:
+            QMessageBox.warning(self, "Feil", "Begge feltene må fylles ut.")
+            return
 
         try:
-            ssh, remote_file_path = self.connect_to_server()
+            ssh, remote_file_path = self.parent().connect_to_server()
             sftp = ssh.open_sftp()
-            with sftp.open(remote_file_path, 'r') as file:
-                books = json.load(file)
 
-            # Find the book to update
-            for i, book in enumerate(books):
-                if book['name'] == self.book_name:
-                    books[i] = updated_book  # Update book information
-                    break
-            else:
-                QMessageBox.warning(self, "Feil", "Boken ble ikke funnet.")
+            try:
+                with sftp.open(remote_file_path, 'r') as file:
+                    books = json.load(file)
+            except FileNotFoundError:
+                QMessageBox.critical(self, "Feil", "JSON-filen finnes ikke på serveren.")
+                return
+            except json.JSONDecodeError:
+                QMessageBox.critical(self, "Feil", "Kunne ikke lese JSON-filen fra serveren.")
                 return
 
-            # Write the updated list back to the server
+            for book in books:
+                if book['name'] == self.book_name:
+                    book['name'] = new_book_name
+                    book['price'] = new_book_price
+                    break
+            else:
+                QMessageBox.warning(self, "Feil", "Bok ikke funnet.")
+                return
+
             with sftp.open(remote_file_path, 'w') as file:
                 json.dump(books, file, indent=4)
-            QMessageBox.information(self, "Suksess", "Endringer lagret!")  # Success message
-            self.accept()  # Close the dialog on success
+
+            QMessageBox.information(self, "Suksess", "Endringene ble lagret!")
+            self.parent().load_books()  # Refresh the book list in the parent window
+
         except Exception as e:
-            QMessageBox.critical(self, "Feil", f"Kunne ikke lagre endringene: {str(e)}")
+            QMessageBox.critical(self, "Feil", f"Kunne ikke koble til serveren: {str(e)}")
+
         finally:
             sftp.close()
             ssh.close()
 
-    def connect_to_server(self):
-        """Connect to the server."""
-        server_ip = '192.168.1.218'
-        username = 'bok'
-        password = 'bok'
-        remote_file_path = '/home/bok/books.json'
-
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server_ip, username=username, password=password)
-
-        return ssh, remote_file_path
+        self.close()
 
 
 # Settings Dialog Class
@@ -471,15 +389,21 @@ class SettingsDialog(QDialog):
 
     def init_ui(self):
         self.setWindowTitle("Innstillinger (Settings)")
-        self.setMinimumSize(300, 200)  # Set minimum size smaller
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setMinimumSize(300, 400)
+        self.setStyleSheet("background-color: #E0F7FA;")
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Innstillinger vil komme snart."))  # Placeholder text
+
+        info_label = QLabel("Ingen innstillinger tilgjengelig for øyeblikket.")
+        layout.addWidget(info_label)
+
+        close_button = QPushButton("Lukk (Close)")
+        close_button.clicked.connect(self.close)
+        layout.addWidget(close_button)
+
         self.setLayout(layout)
 
 
-# Main execution
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = BookUploader()
