@@ -15,9 +15,25 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QListWidget,
     QMenu,
-    QAction
+    QAction,
+    QTextEdit
+
+    
 )
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QColor
+
+#Background color var:
+
+
+
+
+
+
+
+#####
+
+
 
 
 # Main Window Class (Home Page)
@@ -67,7 +83,7 @@ class BookUploader(QWidget):
         # Left container frame for alignment and styling
         left_container = QFrame()
         left_container.setLayout(button_container)
-        left_container.setStyleSheet("background-color: #F0EAD6; padding: 20px;")  # Light brown background
+        left_container.setStyleSheet(f"{left_side_bc_L} padding: 20px;")  # Light brown background
 
         # Add the left container to the left layout
         left_layout.addWidget(left_container)
@@ -229,7 +245,7 @@ class AddBookDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle("Legg til Bok (Add Book)")
         self.setMinimumSize(300, 400)  # Set minimum size smaller
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setStyleSheet(red_ins_bc_L)  # Light brown background color
         self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
 
         main_layout = QVBoxLayout()
@@ -342,7 +358,7 @@ class EditBookDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle("Rediger Bok (Edit Book)")
         self.setMinimumSize(300, 400)  # Set minimum size smaller
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setStyleSheet(red_ins_bc_L)  # Light brown background color
         self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
 
         main_layout = QVBoxLayout()
@@ -472,7 +488,7 @@ class SettingsDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle("Innstillinger (Settings)")
         self.setMinimumSize(300, 200)  # Set minimum size smaller
-        self.setStyleSheet("background-color: #D2B48C;")  # Light brown background color
+        self.setStyleSheet(red_ins_bc_L)  # Light brown background color
 
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Innstillinger vil komme snart."))  # Placeholder text
@@ -481,7 +497,12 @@ class SettingsDialog(QDialog):
 
 # Main execution
 if __name__ == "__main__":
+    red_ins_bc_L = ("background-color: #D2B48C;")
+    left_side_bc_L =("background-color: #F0EAD6;")
     app = QApplication(sys.argv)
     window = BookUploader()
+    tekst = QTextEdit()
+    #tekst_bc_L = tekst.setTextColor(QColor("white"))
+    app.setStyleSheet("QLabel, QTextEdit {color: white; }")
     window.show()
     sys.exit(app.exec_())
