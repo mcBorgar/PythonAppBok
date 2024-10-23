@@ -122,6 +122,7 @@ class MainApp(QMainWindow):
         self.setWindowTitle("Bok Database")
         self.setGeometry(100, 100, 600, 400)
         self.init_ui()
+        self.load_books()
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -150,7 +151,6 @@ class MainApp(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
-        self.load_books()
 
     def load_books(self):
         """Load books from the server and display them in the list."""
