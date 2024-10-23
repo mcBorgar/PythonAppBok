@@ -21,8 +21,9 @@ class BookDetailDialog(QDialog):
             for key, value in book_data.items():
                 layout.addWidget(QLabel(f"{key.capitalize()}: {value}"))
 
+        # Change the close button to accept the dialog (similar to cancel button)
         close_button = QPushButton("Close")
-        close_button.clicked.connect(self.reject)
+        close_button.clicked.connect(self.accept)  # Changed from reject to accept
         layout.addWidget(close_button)
 
         self.setLayout(layout)
@@ -42,13 +43,12 @@ class BookDialog(QDialog):
             'author': QLineEdit(self),
             'pages': QLineEdit(self),
             'genre': QLineEdit(self),
-            'summary': QTextEdit(self),  # Changed from QLineEdit to QTextEdit
+            'summary': QTextEdit(self),
             'stock': QLineEdit(self),
             'price': QLineEdit(self)
         }
 
-        # Set a maximum height for the summary QTextEdit
-        self.inputs['summary'].setMaximumHeight(100)  # Adjust height as needed
+        self.inputs['summary'].setMaximumHeight(100)  # Set a maximum height for the summary QTextEdit
 
         for key, input_field in self.inputs.items():
             input_field.setPlaceholderText(key.capitalize())
@@ -56,8 +56,10 @@ class BookDialog(QDialog):
 
         save_button = QPushButton("Lagre")
         save_button.clicked.connect(lambda: self.save_book(book_data))
+
+        # Connect cancel button to the same action as closing the dialog
         cancel_button = QPushButton("Avbryt")
-        cancel_button.clicked.connect(self.reject)
+        cancel_button.clicked.connect(self.accept)  # Changed from reject to accept
 
         layout.addWidget(save_button)
         layout.addWidget(cancel_button)
@@ -119,7 +121,7 @@ class MainApp(QMainWindow):
 
     def init_ui(self):
         layout = QVBoxLayout()
-        
+
         # Create the search bar
         self.search_bar = QLineEdit(self)
         self.search_bar.setPlaceholderText("Søk etter bøker...")
