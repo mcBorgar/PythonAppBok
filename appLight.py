@@ -19,7 +19,11 @@ class BookDetailDialog(QDialog):
 
         if book_data:
             for key, value in book_data.items():
-                layout.addWidget(QLabel(f"{key.capitalize()}: {value}"))
+                label = QLabel(f"{key.capitalize()}: {value}")
+                if key == 'summary':
+                    label.setWordWrap(True)
+                    label.setMaximumHeight(100)  # Set a maximum height for the summary QLabel
+                layout.addWidget(label)
 
         # Change the close button to accept the dialog (similar to cancel button)
         close_button = QPushButton("Close")
