@@ -20,19 +20,18 @@ from PyQt5.QtWidgets import (
 
     
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSlot 
 from PyQt5.QtGui import QColor
 
 #Background color var:
 
 
-
-
+light = True
+run = True
 
 
 
 #####
-
 
 
 
@@ -44,6 +43,7 @@ class BookUploader(QWidget):
         self.timer = QTimer(self)  # Create a QTimer instance
         self.timer.timeout.connect(self.load_books)  # Connect to the load_books method
         self.timer.start(5000)  # Check for updates every 5 seconds
+        
 
     def init_ui(self):
         self.setWindowTitle("Library App - Home")
@@ -354,6 +354,7 @@ class EditBookDialog(QDialog):
         self.book_name = book_name
         self.init_ui()
         self.load_book_details()
+        
 
     def init_ui(self):
         self.setWindowTitle("Rediger Bok (Edit Book)")
@@ -418,6 +419,7 @@ class EditBookDialog(QDialog):
                     self.summary_input.setText(book.get('summary', ''))
                     self.price_input.setText(book['price'])
                     self.stock_input.setText(book.get('stock', ''))
+                    
                     break
             else:
                 QMessageBox.warning(self, "Feil", "Boken ble ikke funnet.")
@@ -464,6 +466,9 @@ class EditBookDialog(QDialog):
         finally:
             sftp.close()
             ssh.close()
+    
+    
+
 
     def connect_to_server(self):
         """Connect to the server."""
@@ -475,6 +480,9 @@ class EditBookDialog(QDialog):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(server_ip, username=username, password=password)
+        #app.setStyleSheet("QLabel, QTextEdit {color: blue;}")
+        # label = QLabel(ssh)
+        # label.setStyleSheet("color: blue;")
 
         return ssh, remote_file_path
 
@@ -491,18 +499,51 @@ class SettingsDialog(QDialog):
         self.setStyleSheet(red_ins_bc_L)  # Light brown background color
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Innstillinger vil komme snart."))  # Placeholder text
-        self.setLayout(layout)
+        #layout.addWidget(QLabel("Innstillinger vil komme snart."))  # Placeholder text
+        #self.setLayout(layout)
+        #self.button_id = ("click")
+
+        self.button = QPushButton("Light/Dark", self)
+        self.button.setToolTip("Hei")
+        self.button.setStyleSheet(f"{button_bc} {button_text}")
+        self.button.move(100, 80)
+
+        
+
+        
 
 
 # Main execution
 if __name__ == "__main__":
+    button_text = ("color: #2F4F4F;")
+    button_bc =("background-color: #D8CFC4;")
     red_ins_bc_L = ("background-color: #D2B48C;")
     left_side_bc_L =("background-color: #F0EAD6;")
     app = QApplication(sys.argv)
+    text = app.setStyleSheet("QLabel, QTextEdit {color: black; }")
     window = BookUploader()
     tekst = QTextEdit()
     #tekst_bc_L = tekst.setTextColor(QColor("white"))
-    app.setStyleSheet("QLabel, QTextEdit {color: white; }")
+    print ("hei")
+    
     window.show()
     sys.exit(app.exec_())
+
+
+while run  == True:
+    #@pyqtSlot
+        def click():
+            if light == True:
+                button_text = ("color: #2F4F4F;")
+                button_bc =("background-color: #D8CFC4;")
+                red_ins_bc_L = ("background-color: #D2B48C;")
+                left_side_bc_L =("background-color: #F0EAD6;")
+                print ("trka")
+                light = False
+            else:
+                button_text = ("color: #2F4F4F;")
+                button_bc =("background-color: #D8CFC4;")
+                red_ins_bc_L = ("background-color: #D2B48C;")
+                left_side_bc_L =("background-color: #F0EAD6;")
+                light = True 
+
