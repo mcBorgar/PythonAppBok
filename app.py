@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTimer
 
-
+a
 # Main Window Class (Home Page)
 class BookUploader(QWidget):
     def __init__(self):
