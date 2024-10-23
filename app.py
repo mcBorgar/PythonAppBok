@@ -30,7 +30,7 @@ class BookUploader(QWidget):
         self.timer.start(5000)  # Check for updates every 5 seconds
 
     def init_ui(self):
-        self.setWindowTitle("Library App - Home")
+        self.setWindowTitle("Library App")
         self.setGeometry(100, 100, 1200, 800)  # Increased main window size
 
         # Create main horizontal layout
@@ -38,8 +38,8 @@ class BookUploader(QWidget):
 
         # Left side layout for buttons and headline
         left_layout = QVBoxLayout()
-        headline = QLabel("Bibliotek")
-        headline.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        headline = QLabel("GUDENES \n  BIBLIOTEK")
+        headline.setStyleSheet("font-size: 40px; font-weight: bold; margin-bottom: 0px; padding: 0px;")
 
         # Create a vertical layout for the buttons
         button_container = QVBoxLayout()
@@ -140,7 +140,6 @@ class BookUploader(QWidget):
         return ssh, remote_file_path
 
     def open_add_book_dialog(self):
-        """Open a dialog to add a book."""
         add_book_dialog = AddBookDialog(self)  # Pass 'self' as parent
         add_book_dialog.show()  # Show as non-modal
 
@@ -235,7 +234,7 @@ class BookUploader(QWidget):
             ssh.close()
 
 
-# Add Book Dialog Class
+# Opprette og 
 class AddBookDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
