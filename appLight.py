@@ -94,7 +94,6 @@ class BookDialog(QDialog):
                 books.append(new_data)
 
             self.save_books_to_file(sftp, remote_file_path, books)
-            QMessageBox.information(self, "Suksess", "Boken ble lagret!")
             self.parent().load_books()  # Refresh book list
             self.accept()
         except Exception as e:
@@ -140,7 +139,8 @@ class MainApp(QMainWindow):
             ("Legg til bok", self.open_add_book_dialog),
             ("Rediger bok", self.open_edit_book_dialog),
             ("Slett bok", self.delete_book),
-            ("Detaljer", self.show_book_details)  # Added Detail button
+            ("Detaljer", self.show_book_details),  # Added Detail button
+            ("Sync", self.sync_books)  # Added Sync button
         ]
 
         for label, slot in buttons:
@@ -161,6 +161,10 @@ class MainApp(QMainWindow):
             self.update_book_list(self.books)  # Display all books initially
         except Exception as e:
             QMessageBox.critical(self, "Feil", str(e))
+
+    def sync_books(self):
+        """Sync books from the server and refresh the list."""
+        self.load_books()
 
     def filter_books(self):
         """Filter books based on the search input."""
