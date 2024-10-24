@@ -1,10 +1,12 @@
 import sys
 import json
 import paramiko
+import base64
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget,
-    QListWidget, QPushButton, QDialog, QLineEdit, QLabel, QMessageBox, QTextEdit
+    QListWidget, QPushButton, QDialog, QLineEdit, QLabel, QMessageBox, QTextEdit, QFileDialog
 )
+from PyQt5.QtGui import QPixmap
 
 # Dialog class to show book details
 class BookDetailDialog(QDialog):
@@ -19,11 +21,18 @@ class BookDetailDialog(QDialog):
 
         if book_data:
             for key, value in book_data.items():
-                label = QLabel(f"{key.capitalize()}: {value}")
-                if key == 'summary':
-                    label.setWordWrap(True)
-                    label.setMaximumHeight(100)  # Set a maximum height for the summary QLabel
-                layout.addWidget(label)
+                if key == 'image':
+                    label = QLabel(self)
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(base64.b64decode(value))
+                    label.setPixmap(pixmap)
+                    layout.addWidget(label)
+                else:
+                    label = QLabel(f"{key.capitalize()}: {value}")
+                    if key == 'summary':
+                        label.setWordWrap(True)
+                        label.setMaximumHeight(100)  # Set a maximum height for the summary QLabel
+                    layout.addWidget(label)
 
         # Change the close button to accept the dialog (similar to cancel button)
         close_button = QPushButton("Close")
@@ -58,6 +67,11 @@ class BookDialog(QDialog):
             input_field.setPlaceholderText(key.capitalize())
             layout.addWidget(input_field)
 
+        self.image_path = None
+        upload_image_button = QPushButton("Upload Image")
+        upload_image_button.clicked.connect(self.upload_image)
+        layout.addWidget(upload_image_button)
+
         save_button = QPushButton("Lagre")
         save_button.clicked.connect(lambda: self.save_book(book_data))
 
@@ -71,7 +85,14 @@ class BookDialog(QDialog):
 
         if book_data:  # Load existing book data if provided
             for key, value in book_data.items():
-                self.inputs[key].setText(value)
+                if key != 'image':
+                    self.inputs[key].setText(value)
+
+    def upload_image(self):
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg *.jpeg)", options=options)
+        if file_name:
+            self.image_path = file_name
 
     def save_book(self, book_data):
         new_data = {key: input_field.toPlainText() if isinstance(input_field, QTextEdit) else input_field.text()
@@ -79,6 +100,11 @@ class BookDialog(QDialog):
         if not all(new_data.values()):
             QMessageBox.warning(self, "Advarsel", "Alle feltene må fylles ut.")
             return
+
+        if self.image_path:
+            with open(self.image_path, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                new_data['image'] = encoded_string
 
         try:
             ssh, remote_file_path = self.connect_to_server()
