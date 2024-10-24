@@ -3,17 +3,18 @@ import json
 import paramiko
 import base64
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QWidget,
+    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
     QListWidget, QPushButton, QDialog, QLineEdit, QLabel, QMessageBox, QTextEdit, QFileDialog
 )
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
 
 # Dialog class to show book details
 class BookDetailDialog(QDialog):
     def __init__(self, parent, book_data):
         super().__init__(parent)
         self.setWindowTitle("Book Details")
-        self.setGeometry(100, 100, 400, 300)  # Set size for the dialog
+        self.setGeometry(100, 100, 400, 300)
         self.init_ui(book_data)
 
     def init_ui(self, book_data):
@@ -31,12 +32,11 @@ class BookDetailDialog(QDialog):
                     label = QLabel(f"{key.capitalize()}: {value}")
                     if key == 'summary':
                         label.setWordWrap(True)
-                        label.setMaximumHeight(100)  # Set a maximum height for the summary QLabel
+                        label.setMaximumHeight(100)
                     layout.addWidget(label)
 
-        # Change the close button to accept the dialog (similar to cancel button)
         close_button = QPushButton("Close")
-        close_button.clicked.connect(self.accept)  # Changed from reject to accept
+        close_button.clicked.connect(self.accept)
         layout.addWidget(close_button)
 
         self.setLayout(layout)
@@ -46,7 +46,7 @@ class BookDialog(QDialog):
     def __init__(self, parent, title, book_data=None):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setGeometry(100, 100, 400, 300)  # Set size for the dialog
+        self.setGeometry(100, 100, 400, 300)
         self.init_ui(book_data)
 
     def init_ui(self, book_data):
@@ -61,7 +61,7 @@ class BookDialog(QDialog):
             'price': QLineEdit(self)
         }
 
-        self.inputs['summary'].setMaximumHeight(100)  # Set a maximum height for the summary QTextEdit
+        self.inputs['summary'].setMaximumHeight(100)
 
         for key, input_field in self.inputs.items():
             input_field.setPlaceholderText(key.capitalize())
@@ -75,15 +75,14 @@ class BookDialog(QDialog):
         save_button = QPushButton("Lagre")
         save_button.clicked.connect(lambda: self.save_book(book_data))
 
-        # Connect cancel button to the same action as closing the dialog
         cancel_button = QPushButton("Avbryt")
-        cancel_button.clicked.connect(self.accept)  # Changed from reject to accept
+        cancel_button.clicked.connect(self.accept)
 
         layout.addWidget(save_button)
         layout.addWidget(cancel_button)
         self.setLayout(layout)
 
-        if book_data:  # Load existing book data if provided
+        if book_data:
             for key, value in book_data.items():
                 if key != 'image':
                     self.inputs[key].setText(value)
@@ -96,7 +95,7 @@ class BookDialog(QDialog):
 
     def save_book(self, book_data):
         new_data = {key: input_field.toPlainText() if isinstance(input_field, QTextEdit) else input_field.text()
-                     for key, input_field in self.inputs.items()}
+                    for key, input_field in self.inputs.items()}
         if not all(new_data.values()):
             QMessageBox.warning(self, "Advarsel", "Alle feltene må fylles ut.")
             return
@@ -111,22 +110,21 @@ class BookDialog(QDialog):
             sftp = ssh.open_sftp()
             books = self.load_books_from_file(sftp, remote_file_path)
 
-            if book_data:  # Editing an existing book
+            if book_data:
                 for i, book in enumerate(books):
                     if book['name'] == book_data['name']:
                         books[i] = new_data
                         break
-            else:  # Adding a new book
+            else:
                 books.append(new_data)
 
             self.save_books_to_file(sftp, remote_file_path, books)
-            self.parent().load_books()  # Refresh book list
+            self.parent().load_books()
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Feil", str(e))
 
     def connect_to_server(self):
-        """Connect to the server."""
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect('192.168.1.218', username='bok', password='bok')
@@ -145,37 +143,67 @@ class MainApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Bok Database")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 800, 600)  # Increased size for layout adjustments
         self.init_ui()
         self.load_books()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        # Main layout divided into 2 sections: menu and content
+        main_layout = QHBoxLayout()
+
+        # Left menu
+        menu_widget = QWidget()
+        menu_layout = QVBoxLayout()
+
+        # Add logo/name label
+        logo_label = QLabel("Gudenes Bibliotek")
+        logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        menu_layout.addWidget(logo_label)
+
+        # Buttons for menu
+        buttons = [
+            ("Legg til bok", self.open_add_book_dialog),
+            ("Slett bok", self.delete_book),
+            ("Rediger bok", self.open_edit_book_dialog),
+            ("Detaljer", self.show_book_details),
+            ("Sync", self.sync_books)
+        ]
+
+        for label, slot in buttons:
+            button = QPushButton(label)
+            button.setStyleSheet("color: white;")  # Make buttons' text white
+            button.clicked.connect(slot)
+            menu_layout.addWidget(button)
+
+        menu_layout.addStretch()  # Add stretch to push buttons to the top
+        menu_widget.setLayout(menu_layout)
+        menu_widget.setStyleSheet("background-color: #73A96F; padding: 10px;")
+
+        # Right content section
+        content_widget = QWidget()
+        content_layout = QVBoxLayout()
 
         # Create the search bar
         self.search_bar = QLineEdit(self)
         self.search_bar.setPlaceholderText("Søk etter bøker...")
         self.search_bar.textChanged.connect(self.filter_books)
-        layout.addWidget(self.search_bar)
+        content_layout.addWidget(self.search_bar)
 
+        # Create the book list
         self.book_list = QListWidget(self)
-        layout.addWidget(self.book_list)
+        content_layout.addWidget(self.book_list)
 
-        buttons = [
-            ("Legg til bok", self.open_add_book_dialog),
-            ("Rediger bok", self.open_edit_book_dialog),
-            ("Slett bok", self.delete_book),
-            ("Detaljer", self.show_book_details),  # Added Detail button
-            ("Sync", self.sync_books)  # Added Sync button
-        ]
+        content_widget.setLayout(content_layout)
+        content_widget.setStyleSheet("background-color: #ECD2A3; padding: 10px;")
 
-        for label, slot in buttons:
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            layout.addWidget(button)
+        # Add both sections to main layout
+        main_layout.addWidget(menu_widget, 1)  # Menu takes up 1/4th of the window width
+        main_layout.addWidget(content_widget, 3)  # Content takes up 3/4ths of the window width
 
+        # Set the main layout in a container widget
         container = QWidget()
-        container.setLayout(layout)
+        container.setLayout(main_layout)
         self.setCentralWidget(container)
 
     def load_books(self):
@@ -183,8 +211,8 @@ class MainApp(QMainWindow):
         try:
             ssh, remote_file_path = self.connect_to_server()
             sftp = ssh.open_sftp()
-            self.books = self.load_books_from_file(sftp, remote_file_path)  # Store books in an attribute
-            self.update_book_list(self.books)  # Display all books initially
+            self.books = self.load_books_from_file(sftp, remote_file_path)
+            self.update_book_list(self.books)
         except Exception as e:
             QMessageBox.critical(self, "Feil", str(e))
 
@@ -236,7 +264,6 @@ class MainApp(QMainWindow):
             QMessageBox.critical(self, "Feil", str(e))
 
     def show_book_details(self):
-        """Show details of the selected book."""
         selected_items = self.book_list.selectedItems()
         if not selected_items:
             QMessageBox.warning(self, "Advarsel", "Ingen bok er valgt.")
@@ -263,7 +290,6 @@ class MainApp(QMainWindow):
         return None
 
     def connect_to_server(self):
-        """Connect to the server."""
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect('192.168.1.218', username='bok', password='bok')
