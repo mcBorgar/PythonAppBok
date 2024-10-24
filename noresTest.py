@@ -26,10 +26,16 @@ from PyQt5.QtGui import QColor
 #Background color var:
 
 
-light = True
-run = True
+light = None
 
 
+button_text = ("color: #2F4F4F;")
+button_bc =("background-color: #D8CFC4;")
+red_ins_bc_L = ("background-color: #D2B48C;")
+left_side_bc_L =("background-color: #F0EAD6;")
+
+
+    #@pyqtSlot
 
 #####
 
@@ -45,83 +51,97 @@ class BookUploader(QWidget):
         self.timer.start(5000)  # Check for updates every 5 seconds
         
 
-    def init_ui(self):
-        self.setWindowTitle("Library App - Home")
-        self.setGeometry(100, 100, 1200, 800)  # Increased main window size
-
-        # Create main horizontal layout
-        main_layout = QHBoxLayout()
-
-        # Left side layout for buttons and headline
-        left_layout = QVBoxLayout()
-        headline = QLabel("Bibliotek")
-        headline.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
-
-        # Create a vertical layout for the buttons
-        button_container = QVBoxLayout()
-
-        # Add headline and buttons to the left side
-        button_container.addWidget(headline)
-
-        # Buttons for navigation
-        add_button = QPushButton("Legg til")  # Add book button
-        settings_button = QPushButton("Innstillinger")  # Settings button
-
-        # Set some styling for the buttons
-        button_style = "font-size: 16px; padding: 10px; margin-bottom: 10px;"
-        add_button.setStyleSheet(button_style)
-        settings_button.setStyleSheet(button_style)
-
-        # Connect buttons to their respective functions
-        add_button.clicked.connect(self.open_add_book_dialog)
-        settings_button.clicked.connect(self.open_settings_dialog)
-
-        # Add buttons to the button container layout
-        button_container.addWidget(add_button)
-        button_container.addWidget(settings_button)
-
-        # Left container frame for alignment and styling
+    def init_ui(self, execute = False):
+        con = True
         left_container = QFrame()
-        left_container.setLayout(button_container)
-        left_container.setStyleSheet(f"{left_side_bc_L} padding: 20px;")  # Light brown background
+        if execute == False:
+            self.setWindowTitle("Library App - Home")
+            self.setGeometry(100, 100, 1200, 800)  # Increased main window size
 
-        # Add the left container to the left layout
-        left_layout.addWidget(left_container)
+            # Create main horizontal layout
+            main_layout = QHBoxLayout()
 
-        # Right layout for displaying books
-        right_layout = QVBoxLayout()
-        self.book_list = QListWidget()
-        self.book_list.itemClicked.connect(self.on_book_clicked)  # Connect item clicked signal
-        right_layout.addWidget(self.book_list)
+            # Left side layout for buttons and headline
+            left_layout = QVBoxLayout()
+            headline = QLabel("Bibliotek")
+            headline.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
 
-        # Create a QSplitter to allow resizing between the left and right sections
-        splitter = QSplitter(Qt.Horizontal)
+            # Create a vertical layout for the buttons
+            button_container = QVBoxLayout()
 
-        # Create left and right containers
-        left_frame = QFrame()
-        left_frame.setLayout(left_layout)
-        right_frame = QFrame()
-        right_frame.setLayout(right_layout)
+            # Add headline and buttons to the left side
+            button_container.addWidget(headline)
 
-        # Add frames to the splitter
-        splitter.addWidget(left_frame)
-        splitter.addWidget(right_frame)
+            # Buttons for navigation
+            add_button = QPushButton("Legg til")  # Add book button
+            settings_button = QPushButton("Innstillinger")  # Settings button
 
-        # Set the relative size (20% for the left, 80% for the right)
-        splitter.setSizes([240, 960])  # Adjust size ratio (20% for left, 80% for right)
+            # Set some styling for the buttons
+            button_style = "font-size: 16px; padding: 10px; margin-bottom: 10px;"
+            add_button.setStyleSheet(button_style)
+            settings_button.setStyleSheet(button_style)
 
-        # Add the splitter to the main layout
-        main_layout.addWidget(splitter)
+            # Connect buttons to their respective functions
+            add_button.clicked.connect(self.open_add_book_dialog)
+            settings_button.clicked.connect(self.open_settings_dialog)
 
-        # Set the layout for the main window
-        self.setLayout(main_layout)
+            # Add buttons to the button container layout
+            left_container.setLayout(button_container)
+            button_container.addWidget(add_button)
+            button_container.addWidget(settings_button)
 
-        # Load existing books into the list
-        self.load_books()
+            # Left container frame for alignment and styling
+            
 
-        # Context menu for book list
-        self.book_list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.book_list.customContextMenuRequested.connect(self.show_context_menu)
+            # left_layout.addWidget(left_container)
+            
+       
+       
+        
+        if execute == False:
+            # Right layout for displaying books
+            right_layout = QVBoxLayout()
+            self.book_list = QListWidget()
+            self.book_list.itemClicked.connect(self.on_book_clicked)  # Connect item clicked signal
+            right_layout.addWidget(self.book_list)
+
+            # Create a QSplitter to allow resizing between the left and right sections
+            splitter = QSplitter(Qt.Horizontal)
+
+            # Create left and right containers
+            left_frame = QFrame()
+            left_frame.setLayout(left_layout)
+            right_frame = QFrame()
+            right_frame.setLayout(right_layout)
+
+            # Add frames to the splitter
+            splitter.addWidget(left_frame)
+            splitter.addWidget(right_frame)
+
+            # Set the relative size (20% for the left, 80% for the right)
+            splitter.setSizes([240, 960])  # Adjust size ratio (20% for left, 80% for right)
+
+            # Add the splitter to the main layout
+            main_layout.addWidget(splitter)
+
+            # Set the layout for the main window
+            self.setLayout(main_layout)
+
+            # Load existing books into the list
+            self.load_books()
+
+            # Context menu for book list
+            self.book_list.setContextMenuPolicy(Qt.CustomContextMenu)
+            self.book_list.customContextMenuRequested.connect(self.show_context_menu)
+        #Switch dark light
+        if execute == True or con == True:
+            #left_container = QFrame()
+            #left_container.setLayout(button_container)
+            left_layout.addWidget(left_container)
+            print("kode kjører2323")
+            left_container.setStyleSheet(f"{left_side_bc_L} padding: 20px;")  # Light brown background
+            execute = False
+            print("kode kjører")
 
     def load_books(self):
         """Load books from the server and display them in the list."""
@@ -243,6 +263,7 @@ class AddBookDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+
         self.setWindowTitle("Legg til Bok (Add Book)")
         self.setMinimumSize(300, 400)  # Set minimum size smaller
         self.setStyleSheet(red_ins_bc_L)  # Light brown background color
@@ -356,51 +377,57 @@ class EditBookDialog(QDialog):
         self.load_book_details()
         
 
-    def init_ui(self):
-        self.setWindowTitle("Rediger Bok (Edit Book)")
-        self.setMinimumSize(300, 400)  # Set minimum size smaller
-        self.setStyleSheet(red_ins_bc_L)  # Light brown background color
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
+    def init_ui(self, execute = False):
+        con = True
+        #Switch dark light
+        if execute == True or con == True:
+            self.setWindowTitle("Rediger Bok (Edit Book)")
+            self.setMinimumSize(300, 400)  # Set minimum size smaller
+            self.setStyleSheet(red_ins_bc_L)  # Light brown background color
+            self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)  # Normal dialog window
+            #execute = False
+            print("Hei")
 
-        main_layout = QVBoxLayout()
+        if execute == False:
+            print("Nei")
+            main_layout = QVBoxLayout()
 
-        # Creating input fields for book details
-        self.name_input = QLineEdit(self)
-        self.name_input.setPlaceholderText("Boknavn (Book Name)")
+            # Creating input fields for book details
+            self.name_input = QLineEdit(self)
+            self.name_input.setPlaceholderText("Boknavn (Book Name)")
 
-        self.author_input = QLineEdit(self)
-        self.author_input.setPlaceholderText("Forfatter (Author)")
+            self.author_input = QLineEdit(self)
+            self.author_input.setPlaceholderText("Forfatter (Author)")
 
-        self.pages_input = QLineEdit(self)
-        self.pages_input.setPlaceholderText("Antall sider (Pages)")
+            self.pages_input = QLineEdit(self)
+            self.pages_input.setPlaceholderText("Antall sider (Pages)")
 
-        self.genre_input = QLineEdit(self)
-        self.genre_input.setPlaceholderText("Sjanger (Genre)")
+            self.genre_input = QLineEdit(self)
+            self.genre_input.setPlaceholderText("Sjanger (Genre)")
 
-        self.summary_input = QLineEdit(self)
-        self.summary_input.setPlaceholderText("Sammendrag (Summary)")
+            self.summary_input = QLineEdit(self)
+            self.summary_input.setPlaceholderText("Sammendrag (Summary)")
 
-        self.price_input = QLineEdit(self)
-        self.price_input.setPlaceholderText("Pris (Price)")
+            self.price_input = QLineEdit(self)
+            self.price_input.setPlaceholderText("Pris (Price)")
 
-        self.stock_input = QLineEdit(self)
-        self.stock_input.setPlaceholderText("Antall på lager (Stock)")
+            self.stock_input = QLineEdit(self)
+            self.stock_input.setPlaceholderText("Antall på lager (Stock)")
+            
+            # Adding the input fields to the main layout
+            main_layout.addWidget(self.name_input)
+            main_layout.addWidget(self.author_input)
+            main_layout.addWidget(self.pages_input)
+            main_layout.addWidget(self.genre_input)
+            main_layout.addWidget(self.summary_input)
+            main_layout.addWidget(self.price_input)
+            main_layout.addWidget(self.stock_input)
 
-        # Adding the input fields to the main layout
-        main_layout.addWidget(self.name_input)
-        main_layout.addWidget(self.author_input)
-        main_layout.addWidget(self.pages_input)
-        main_layout.addWidget(self.genre_input)
-        main_layout.addWidget(self.summary_input)
-        main_layout.addWidget(self.price_input)
-        main_layout.addWidget(self.stock_input)
+            save_button = QPushButton("Lagre endringer (Save Changes)", self)
+            save_button.clicked.connect(self.save_changes)
+            main_layout.addWidget(save_button)
 
-        save_button = QPushButton("Lagre endringer (Save Changes)", self)
-        save_button.clicked.connect(self.save_changes)
-        main_layout.addWidget(save_button)
-
-        self.setLayout(main_layout)
-
+            self.setLayout(main_layout)
     def load_book_details(self):
         """Load the book details into the input fields."""
         try:
@@ -503,10 +530,48 @@ class SettingsDialog(QDialog):
         #self.setLayout(layout)
         #self.button_id = ("click")
 
-        self.button = QPushButton("Light/Dark", self)
-        self.button.setToolTip("Hei")
-        self.button.setStyleSheet(f"{button_bc} {button_text}")
-        self.button.move(100, 80)
+        
+        button = QPushButton("Light/Dark", self)
+        #button.setToolTip("Hei")
+        button.setStyleSheet(f"{button_bc} {button_text}")
+        button.move(100, 80)
+
+        button.clicked.connect(self.click)
+        #button_text = ("color: blue;")
+        
+
+    # Switch for light dark function
+    def click(self):
+        global light
+        global button_text
+        global button_bc
+        global red_ins_bc_L
+        global left_side_bc_L
+        global app
+        global text
+        
+
+        if light == True:
+            button_text = ("color: white;")
+            button_bc =("background-color: white;")
+            red_ins_bc_L = ("background-color: white;")
+            left_side_bc_L =("background-color: white;")
+            light = False
+            SettingsDialog.init_ui(self)
+            BookUploader.init_ui(self, execute=True)
+            EditBookDialog.init_ui(execute=True)
+        else:
+            button_text = ("color: #2F4F4F;")
+            button_bc =("background-color: #D8CFC4;")
+            red_ins_bc_L = ("background-color: #D2B48C;")
+            left_side_bc_L =("background-color: #F0EAD6;")
+
+            light = True
+            SettingsDialog.init_ui(self)
+            BookUploader.init_ui(self, execute=True)
+            EditBookDialog.init_ui(execute=True)#1
+                
+        
 
         
 
@@ -515,35 +580,23 @@ class SettingsDialog(QDialog):
 
 # Main execution
 if __name__ == "__main__":
+    light = True
     button_text = ("color: #2F4F4F;")
     button_bc =("background-color: #D8CFC4;")
     red_ins_bc_L = ("background-color: #D2B48C;")
     left_side_bc_L =("background-color: #F0EAD6;")
     app = QApplication(sys.argv)
     text = app.setStyleSheet("QLabel, QTextEdit {color: black; }")
+    
     window = BookUploader()
     tekst = QTextEdit()
     #tekst_bc_L = tekst.setTextColor(QColor("white"))
-    print ("hei")
+    
     
     window.show()
     sys.exit(app.exec_())
 
 
-while run  == True:
-    #@pyqtSlot
-        def click():
-            if light == True:
-                button_text = ("color: #2F4F4F;")
-                button_bc =("background-color: #D8CFC4;")
-                red_ins_bc_L = ("background-color: #D2B48C;")
-                left_side_bc_L =("background-color: #F0EAD6;")
-                print ("trka")
-                light = False
-            else:
-                button_text = ("color: #2F4F4F;")
-                button_bc =("background-color: #D8CFC4;")
-                red_ins_bc_L = ("background-color: #D2B48C;")
-                left_side_bc_L =("background-color: #F0EAD6;")
-                light = True 
+
+
 
