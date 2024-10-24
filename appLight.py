@@ -2,159 +2,114 @@ import sys
 import json
 import paramiko
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QWidget,
-    QListWidget, QPushButton, QDialog, QLineEdit, QLabel, QMessageBox, QTextEdit
+    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
+    QListWidget, QPushButton, QLineEdit, QLabel, QMessageBox, QTextEdit, QFrame
 )
-
-# Dialog class to show book details
-class BookDetailDialog(QDialog):
-    def __init__(self, parent, book_data):
-        super().__init__(parent)
-        self.setWindowTitle("Book Details")
-        self.setGeometry(100, 100, 400, 300)  # Set size for the dialog
-        self.init_ui(book_data)
-
-    def init_ui(self, book_data):
-        layout = QVBoxLayout()
-
-        if book_data:
-            for key, value in book_data.items():
-                layout.addWidget(QLabel(f"{key.capitalize()}: {value}"))
-
-        close_button = QPushButton("Close")
-        close_button.clicked.connect(self.reject)
-        layout.addWidget(close_button)
-
-        self.setLayout(layout)
-
-# Base Dialog Class for Book Actions
-class BookDialog(QDialog):
-    def __init__(self, parent, title, book_data=None):
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        self.setGeometry(100, 100, 400, 300)  # Set size for the dialog
-        self.init_ui(book_data)
-
-    def init_ui(self, book_data):
-        layout = QVBoxLayout()
-        self.inputs = {
-            'name': QLineEdit(self),
-            'author': QLineEdit(self),
-            'pages': QLineEdit(self),
-            'genre': QLineEdit(self),
-            'summary': QTextEdit(self),  # Changed from QLineEdit to QTextEdit
-            'stock': QLineEdit(self),
-            'price': QLineEdit(self)
-        }
-
-        # Set a maximum height for the summary QTextEdit
-        self.inputs['summary'].setMaximumHeight(100)  # Adjust height as needed
-
-        for key, input_field in self.inputs.items():
-            input_field.setPlaceholderText(key.capitalize())
-            layout.addWidget(input_field)
-
-        save_button = QPushButton("Lagre")
-        save_button.clicked.connect(lambda: self.save_book(book_data))
-        cancel_button = QPushButton("Avbryt")
-        cancel_button.clicked.connect(self.reject)
-
-        layout.addWidget(save_button)
-        layout.addWidget(cancel_button)
-        self.setLayout(layout)
-
-        if book_data:  # Load existing book data if provided
-            for key, value in book_data.items():
-                self.inputs[key].setText(value)
-
-    def save_book(self, book_data):
-        new_data = {key: input_field.toPlainText() if isinstance(input_field, QTextEdit) else input_field.text()
-                     for key, input_field in self.inputs.items()}
-        if not all(new_data.values()):
-            QMessageBox.warning(self, "Advarsel", "Alle feltene må fylles ut.")
-            return
-
-        try:
-            ssh, remote_file_path = self.connect_to_server()
-            sftp = ssh.open_sftp()
-            books = self.load_books_from_file(sftp, remote_file_path)
-
-            if book_data:  # Editing an existing book
-                for i, book in enumerate(books):
-                    if book['name'] == book_data['name']:
-                        books[i] = new_data
-                        break
-            else:  # Adding a new book
-                books.append(new_data)
-
-            self.save_books_to_file(sftp, remote_file_path, books)
-            QMessageBox.information(self, "Suksess", "Boken ble lagret!")
-            self.parent().load_books()  # Refresh book list
-            self.accept()
-        except Exception as e:
-            QMessageBox.critical(self, "Feil", str(e))
-
-    def connect_to_server(self):
-        """Connect to the server."""
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect('192.168.1.218', username='bok', password='bok')
-        return ssh, '/home/bok/books.json'
-
-    def load_books_from_file(self, sftp, remote_file_path):
-        with sftp.open(remote_file_path, 'r') as file:
-            return json.load(file)
-
-    def save_books_to_file(self, sftp, remote_file_path, books):
-        with sftp.open(remote_file_path, 'w') as file:
-            json.dump(books, file, indent=4)
+from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt
 
 # Main Application Class
 class MainApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Bok Database")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 800, 600)
         self.init_ui()
+        self.load_books()
 
     def init_ui(self):
-        layout = QVBoxLayout()
-        
-        # Create the search bar
-        self.search_bar = QLineEdit(self)
-        self.search_bar.setPlaceholderText("Søk etter bøker...")
-        self.search_bar.textChanged.connect(self.filter_books)
-        layout.addWidget(self.search_bar)
+        main_layout = QHBoxLayout()
 
-        self.book_list = QListWidget(self)
-        layout.addWidget(self.book_list)
+        # Left-side menu
+        menu_layout = QVBoxLayout()
 
+        # App name/logo with text "Gudenes Bibliotek"
+        library_label = QLabel("Gudenes\nBibliotek")
+        library_label.setFont(QFont("Arial", 25, QFont.Bold))
+        library_label.setAlignment(Qt.AlignTop)
+        menu_layout.addWidget(library_label)
+
+        # Menu buttons
         buttons = [
             ("Legg til bok", self.open_add_book_dialog),
-            ("Rediger bok", self.open_edit_book_dialog),
             ("Slett bok", self.delete_book),
-            ("Detaljer", self.show_book_details)  # Added Detail button
+            ("Rediger bok", self.open_edit_book_dialog),
+            ("Detaljer", self.show_book_details),
+            ("Sync", self.sync_books)
         ]
 
         for label, slot in buttons:
             button = QPushButton(label)
             button.clicked.connect(slot)
-            layout.addWidget(button)
+            
+            # Bruk gyldig stilark for QPushButton
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    text-align: left;
+                    padding-right: 10px;
+                    border: none;
+                    font-family: roboto;
+                    font-size: 20px;
+                    font-weight: semibold;
+                }
+            """)
+            
+            menu_layout.addWidget(button)
 
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
-        self.load_books()
+        menu_layout.addStretch()
+
+
+        # Create a container for the menu and set its width
+        menu_container = QWidget()
+        menu_container.setLayout(menu_layout)
+        menu_container.setFixedWidth(200)
+
+        # Right-side layout
+        right_layout = QVBoxLayout()
+
+        # Search bar and "Sjangere" button
+        top_right_layout = QHBoxLayout()
+        self.search_bar = QLineEdit(self)
+        self.search_bar.setPlaceholderText("Søk etter bøker...")
+        self.search_bar.textChanged.connect(self.filter_books)
+        self.search_bar.setStyleSheet("background-color: #F0F0F0;")  # Grå/hvit bakgrunn for søkefeltet
+        top_right_layout.addWidget(self.search_bar)
+
+        genre_button = QPushButton("Sjangere")
+        genre_button.setStyleSheet("background-color: #B7C8B5; padding: 10px;")
+        top_right_layout.addWidget(genre_button)
+
+        right_layout.addLayout(top_right_layout)
+
+        # Book list
+        self.book_list = QListWidget(self)
+        right_layout.addWidget(self.book_list)
+        self.book_list.setStyleSheet("background-color: #ECD2A3;")  # Bakgrunnsfarge for boklisten
+
+        # Combine left menu and right content
+        main_layout.addWidget(menu_container)
+        main_layout.addLayout(right_layout)
+
+        # Set the layout to the main widget
+        main_widget = QWidget()
+        main_widget.setLayout(main_layout)
+        main_widget.setStyleSheet("background-color: #73A96F;")  # Endre fargen her
+        self.setCentralWidget(main_widget)
 
     def load_books(self):
         """Load books from the server and display them in the list."""
         try:
             ssh, remote_file_path = self.connect_to_server()
             sftp = ssh.open_sftp()
-            self.books = self.load_books_from_file(sftp, remote_file_path)  # Store books in an attribute
-            self.update_book_list(self.books)  # Display all books initially
+            self.books = self.load_books_from_file(sftp, remote_file_path)
+            self.update_book_list(self.books)
         except Exception as e:
             QMessageBox.critical(self, "Feil", str(e))
+
+    def sync_books(self):
+        """Sync books from the server and refresh the list."""
+        self.load_books()
 
     def filter_books(self):
         """Filter books based on the search input."""
@@ -240,6 +195,40 @@ class MainApp(QMainWindow):
     def save_books_to_file(self, sftp, remote_file_path, books):
         with sftp.open(remote_file_path, 'w') as file:
             json.dump(books, file, indent=4)
+
+# Book Dialog for adding/editing books
+class BookDialog(QMessageBox):
+    def __init__(self, parent, title, book_data=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.book_data = book_data
+
+        self.name_field = QLineEdit(self)
+        self.name_field.setPlaceholderText("Boknavn")
+        self.layout().addWidget(self.name_field)
+
+        self.price_field = QLineEdit(self)
+        self.price_field.setPlaceholderText("Pris")
+        self.layout().addWidget(self.price_field)
+
+        if book_data:
+            self.name_field.setText(book_data['name'])
+            self.price_field.setText(str(book_data['price']))
+
+        self.addButton(QMessageBox.Ok)
+        self.addButton(QMessageBox.Cancel)
+
+# Book Detail Dialog for showing details of a selected book
+class BookDetailDialog(QMessageBox):
+    def __init__(self, parent, book_data):
+        super().__init__(parent)
+        self.setWindowTitle("Detaljer")
+
+        self.text_area = QTextEdit(self)
+        self.text_area.setReadOnly(True)
+        self.text_area.setText(f"Navn: {book_data['name']}\nPris: {book_data['price']}")
+
+        self.layout().addWidget(self.text_area)
 
 # Entry point for the application
 if __name__ == "__main__":
