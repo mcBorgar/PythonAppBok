@@ -9,7 +9,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 
 # Main Application Class
-class MainApp(QMainWindow):
+class MainApp(QMainWindow): 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Bok Database")
