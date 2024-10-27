@@ -1,10 +1,12 @@
 import sys
 import json
 import paramiko
+import base64
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget,
-    QListWidget, QPushButton, QDialog, QLineEdit, QLabel, QMessageBox, QTextEdit
+    QListWidget, QPushButton, QDialog, QLineEdit, QLabel, QMessageBox, QTextEdit, QFileDialog
 )
+from PyQt5.QtGui import QPixmap
 
 # Dialog class to show book details
 class BookDetailDialog(QDialog):
@@ -19,10 +21,22 @@ class BookDetailDialog(QDialog):
 
         if book_data:
             for key, value in book_data.items():
-                layout.addWidget(QLabel(f"{key.capitalize()}: {value}"))
+                if key == 'image':
+                    label = QLabel(self)
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(base64.b64decode(value))
+                    label.setPixmap(pixmap)
+                    layout.addWidget(label)
+                else:
+                    label = QLabel(f"{key.capitalize()}: {value}")
+                    if key == 'summary':
+                        label.setWordWrap(True)
+                        label.setMaximumHeight(100)  # Set a maximum height for the summary QLabel
+                    layout.addWidget(label)
 
+        # Change the close button to accept the dialog (similar to cancel button)
         close_button = QPushButton("Close")
-        close_button.clicked.connect(self.reject)
+        close_button.clicked.connect(self.accept)  # Changed from reject to accept
         layout.addWidget(close_button)
 
         self.setLayout(layout)
@@ -42,22 +56,28 @@ class BookDialog(QDialog):
             'author': QLineEdit(self),
             'pages': QLineEdit(self),
             'genre': QLineEdit(self),
-            'summary': QTextEdit(self),  # Changed from QLineEdit to QTextEdit
+            'summary': QTextEdit(self),
             'stock': QLineEdit(self),
             'price': QLineEdit(self)
         }
 
-        # Set a maximum height for the summary QTextEdit
-        self.inputs['summary'].setMaximumHeight(100)  # Adjust height as needed
+        self.inputs['summary'].setMaximumHeight(100)  # Set a maximum height for the summary QTextEdit
 
         for key, input_field in self.inputs.items():
             input_field.setPlaceholderText(key.capitalize())
             layout.addWidget(input_field)
 
+        self.image_path = None
+        upload_image_button = QPushButton("Upload Image")
+        upload_image_button.clicked.connect(self.upload_image)
+        layout.addWidget(upload_image_button)
+
         save_button = QPushButton("Lagre")
         save_button.clicked.connect(lambda: self.save_book(book_data))
+
+        # Connect cancel button to the same action as closing the dialog
         cancel_button = QPushButton("Avbryt")
-        cancel_button.clicked.connect(self.reject)
+        cancel_button.clicked.connect(self.accept)  # Changed from reject to accept
 
         layout.addWidget(save_button)
         layout.addWidget(cancel_button)
@@ -65,7 +85,14 @@ class BookDialog(QDialog):
 
         if book_data:  # Load existing book data if provided
             for key, value in book_data.items():
-                self.inputs[key].setText(value)
+                if key != 'image':
+                    self.inputs[key].setText(value)
+
+    def upload_image(self):
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg *.jpeg)", options=options)
+        if file_name:
+            self.image_path = file_name
 
     def save_book(self, book_data):
         new_data = {key: input_field.toPlainText() if isinstance(input_field, QTextEdit) else input_field.text()
@@ -73,6 +100,11 @@ class BookDialog(QDialog):
         if not all(new_data.values()):
             QMessageBox.warning(self, "Advarsel", "Alle feltene må fylles ut.")
             return
+
+        if self.image_path:
+            with open(self.image_path, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                new_data['image'] = encoded_string
 
         try:
             ssh, remote_file_path = self.connect_to_server()
@@ -88,7 +120,6 @@ class BookDialog(QDialog):
                 books.append(new_data)
 
             self.save_books_to_file(sftp, remote_file_path, books)
-            QMessageBox.information(self, "Suksess", "Boken ble lagret!")
             self.parent().load_books()  # Refresh book list
             self.accept()
         except Exception as e:
@@ -116,10 +147,11 @@ class MainApp(QMainWindow):
         self.setWindowTitle("Bok Database")
         self.setGeometry(100, 100, 600, 400)
         self.init_ui()
+        self.load_books()
 
     def init_ui(self):
         layout = QVBoxLayout()
-        
+
         # Create the search bar
         self.search_bar = QLineEdit(self)
         self.search_bar.setPlaceholderText("Søk etter bøker...")
@@ -133,7 +165,8 @@ class MainApp(QMainWindow):
             ("Legg til bok", self.open_add_book_dialog),
             ("Rediger bok", self.open_edit_book_dialog),
             ("Slett bok", self.delete_book),
-            ("Detaljer", self.show_book_details)  # Added Detail button
+            ("Detaljer", self.show_book_details),  # Added Detail button
+            ("Sync", self.sync_books)  # Added Sync button
         ]
 
         for label, slot in buttons:
@@ -144,7 +177,6 @@ class MainApp(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
-        self.load_books()
 
     def load_books(self):
         """Load books from the server and display them in the list."""
@@ -155,6 +187,10 @@ class MainApp(QMainWindow):
             self.update_book_list(self.books)  # Display all books initially
         except Exception as e:
             QMessageBox.critical(self, "Feil", str(e))
+
+    def sync_books(self):
+        """Sync books from the server and refresh the list."""
+        self.load_books()
 
     def filter_books(self):
         """Filter books based on the search input."""
